@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import 'l10n/generated/app_localizations.dart';
 import 'features/settings/presentation/providers/locale_provider.dart';
@@ -24,7 +27,29 @@ void main() async {
   await notificationService.initialize();
   await notificationService.requestPermissions();
 
-  runApp(const ProviderScope(child: PersonalityApp()));
+  // Initialize Firebase (graceful — won't crash if google-services.json missing)
+  bool firebaseInitialized = false;
+  try {
+    await Firebase.initializeApp();
+    firebaseInitialized = true;
+
+    // Pass all uncaught Flutter errors to Crashlytics
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+  } catch (e) {
+    debugPrint('⚠️ Firebase not initialized: $e');
+  }
+
+  if (firebaseInitialized) {
+    // Catch async errors not caught by Flutter framework
+    runZonedGuarded(
+      () => runApp(const ProviderScope(child: PersonalityApp())),
+      (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      },
+    );
+  } else {
+    runApp(const ProviderScope(child: PersonalityApp()));
+  }
 }
 
 class PersonalityApp extends ConsumerWidget {
