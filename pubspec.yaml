@@ -74,6 +74,7 @@ dependencies:
   speech_to_text: ^7.0.0
   image_cropper: ^11.0.0
   crop_your_image: ^2.0.0
+  open_filex: ^4.7.0
 
 dev_dependencies:
   flutter_test:

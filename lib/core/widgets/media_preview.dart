@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import '../database/app_database.dart';
 import '../../features/notes/presentation/widgets/audio_player_widget.dart';
 
@@ -22,15 +23,23 @@ class MediaPreview extends StatelessWidget {
             Positioned(
               top: 4,
               right: 4,
-              child: GestureDetector(
-                onTap: onDelete,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
+              child: Semantics(
+                label: 'Eki sil',
+                button: true,
+                child: GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: Colors.white),
                 ),
               ),
             ),
@@ -42,36 +51,43 @@ class MediaPreview extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     switch (attachment.fileType) {
       case 'image':
-        return GestureDetector(
-          onTap: () => _showFullScreenImage(context),
-          child: Image.file(
-            File(attachment.filePath),
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (context, error, stackTrace) => const Center(
-              child: Icon(Icons.broken_image, color: Colors.grey),
+        return Semantics(
+          label: 'Resim: ${attachment.fileName}',
+          image: true,
+          child: GestureDetector(
+            onTap: () => _showFullScreenImage(context),
+            child: Image.file(
+              File(attachment.filePath),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.broken_image, color: Colors.grey),
+              ),
             ),
           ),
         );
       case 'audio':
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.audiotrack, size: 32, color: Colors.blue),
-                const SizedBox(height: 8),
-                Text(
-                  attachment.fileName,
-                  style: const TextStyle(fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                AudioPlayerWidget(audioPath: attachment.filePath),
-              ],
+        return Semantics(
+          label: 'Ses dosyası: ${attachment.fileName}',
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.audiotrack, size: 32, color: Colors.blue),
+                  const SizedBox(height: 8),
+                  Text(
+                    attachment.fileName,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  AudioPlayerWidget(audioPath: attachment.filePath),
+                ],
+              ),
             ),
           ),
         );
@@ -100,11 +116,9 @@ class MediaPreview extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement file opening
-                  },
+                  onPressed: () => _openFile(context),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Open', style: TextStyle(fontSize: 12)),
+                  label: const Text('Aç', style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -118,8 +132,11 @@ class MediaPreview extends StatelessWidget {
           ),
         );
       default:
-        return const Center(
-          child: Icon(Icons.insert_drive_file, size: 32, color: Colors.grey),
+        return Semantics(
+          label: 'Dosya: ${attachment.fileName}',
+          child: const Center(
+            child: Icon(Icons.insert_drive_file, size: 32, color: Colors.grey),
+          ),
         );
     }
   }
@@ -151,5 +168,23 @@ class MediaPreview extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openFile(BuildContext context) async {
+    final file = File(attachment.filePath);
+    if (!file.existsSync()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Dosya bulunamadı')));
+      }
+      return;
+    }
+    final result = await OpenFilex.open(attachment.filePath);
+    if (result.type != ResultType.done && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dosya açılamadı: ${result.message}')),
+      );
+    }
   }
 }

@@ -220,20 +220,48 @@ class UnifiedAgendaItem extends ConsumerWidget {
           : null,
     );
 
-    if (compact) return content;
+    final semanticLabel = _buildSemanticLabel(
+      title,
+      typeLabel,
+      subtitleExtra,
+      isCompleted,
+      isUrgent,
+    );
+
+    if (compact) {
+      return Semantics(label: semanticLabel, child: content);
+    }
 
     final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: isDark ? cs.surfaceContainerHighest : cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: isDark ? 0.1 : 0.2),
+    return Semantics(
+      label: semanticLabel,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: isDark ? cs.surfaceContainerHighest : cs.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: isDark ? 0.1 : 0.2),
+          ),
         ),
+        child: content,
       ),
-      child: content,
     );
+  }
+
+  String _buildSemanticLabel(
+    String title,
+    String typeLabel,
+    String? subtitleExtra,
+    bool isCompleted,
+    bool isUrgent,
+  ) {
+    final parts = <String>[typeLabel];
+    parts.add(title);
+    if (subtitleExtra != null) parts.add(subtitleExtra);
+    if (isCompleted) parts.add('tamamlandı');
+    if (isUrgent) parts.add('acil');
+    return parts.join(', ');
   }
 
   void _showEventActionDialog(
@@ -411,19 +439,37 @@ class _AttachmentBadge extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasAudio)
-              const Icon(Icons.mic_none_rounded, size: 14, color: Colors.blue),
+              Semantics(
+                label: 'Ses eki',
+                child: const Icon(
+                  Icons.mic_none_rounded,
+                  size: 14,
+                  color: Colors.blue,
+                ),
+              ),
             if (hasAudio && hasImage) const SizedBox(width: 2),
             if (hasImage)
-              const Icon(Icons.image_outlined, size: 14, color: Colors.orange),
+              Semantics(
+                label: 'Resim eki',
+                child: const Icon(
+                  Icons.image_outlined,
+                  size: 14,
+                  color: Colors.orange,
+                ),
+              ),
             if (!hasAudio && !hasImage)
-              const Icon(
-                Icons.attach_file_rounded,
-                size: 14,
-                color: Colors.grey,
+              Semantics(
+                label: 'Dosya eki',
+                child: const Icon(
+                  Icons.attach_file_rounded,
+                  size: 14,
+                  color: Colors.grey,
+                ),
               ),
             const SizedBox(width: 4),
             Text(
               '${attachments.length}',
+              semanticsLabel: '${attachments.length} ek',
               style: TextStyle(
                 fontSize: 10,
                 color: Theme.of(
