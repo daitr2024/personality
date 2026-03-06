@@ -1144,7 +1144,7 @@ class DailyDashboard extends ConsumerWidget {
             ),
             const Gap(4),
             Text(
-              'Sil',
+              AppLocalizations.of(context)!.delete,
               style: TextStyle(
                 color: AppTheme.urgentColor,
                 fontSize: 11,
@@ -1331,7 +1331,7 @@ class DailyDashboard extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1345,7 +1345,7 @@ class DailyDashboard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Sil'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),

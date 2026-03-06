@@ -810,4 +810,82 @@ class AppLocalizationsTr extends AppLocalizations {
   String analysisError(String error) {
     return 'Analiz hatası: $error';
   }
+
+  @override
+  String mediaFilesCount(int count) {
+    return 'Media Dosyaları ($count)';
+  }
+
+  @override
+  String get addMedia => 'Media Ekle';
+
+  @override
+  String get noMediaYet => 'Henüz media eklenmemiş';
+
+  @override
+  String get fileAddedSuccess => 'Dosya başarıyla eklendi';
+
+  @override
+  String get fileNotFound => 'Dosya bulunamadı';
+
+  @override
+  String fileOpenFail(String msg) {
+    return 'Dosya açılamadı: $msg';
+  }
+
+  @override
+  String get openFile => 'Aç';
+
+  @override
+  String imageLabel(String name) {
+    return 'Resim: $name';
+  }
+
+  @override
+  String audioFileLabel(String name) {
+    return 'Ses dosyası: $name';
+  }
+
+  @override
+  String fileLabel(String name) {
+    return 'Dosya: $name';
+  }
+
+  @override
+  String get deleteAttachmentSemantic => 'Eki sil';
+
+  @override
+  String get audioAttachment => 'Ses eki';
+
+  @override
+  String get imageAttachment => 'Resim eki';
+
+  @override
+  String get fileAttachment => 'Dosya eki';
+
+  @override
+  String attachmentCount(int count) {
+    return '$count ek';
+  }
+
+  @override
+  String get statusCompleted => 'tamamlandı';
+
+  @override
+  String get statusUrgent => 'acil';
+
+  @override
+  String dateLabelFmt(String date) {
+    return 'Tarih: $date';
+  }
+
+  @override
+  String timeLabelFmt(String time) {
+    return 'Saat: $time';
+  }
+
+  @override
+  String deleteConfirmFile(String name) {
+    return '\"$name\" dosyasını silmek istiyor musunuz?';
+  }
 }

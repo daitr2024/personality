@@ -60,9 +60,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.searchError(e.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.searchError(e.toString()),
+            ),
+          ),
+        );
       }
     }
   }
@@ -438,7 +442,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               Navigator.pop(context);
               _performSearch();
             },
-            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+            child: Text(
+              AppLocalizations.of(context)!.delete,
+              style: const TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),

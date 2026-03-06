@@ -1569,6 +1569,126 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Analiz hatası: {error}'**
   String analysisError(String error);
+
+  /// No description provided for @mediaFilesCount.
+  ///
+  /// In tr, this message translates to:
+  /// **'Media Dosyaları ({count})'**
+  String mediaFilesCount(int count);
+
+  /// No description provided for @addMedia.
+  ///
+  /// In tr, this message translates to:
+  /// **'Media Ekle'**
+  String get addMedia;
+
+  /// No description provided for @noMediaYet.
+  ///
+  /// In tr, this message translates to:
+  /// **'Henüz media eklenmemiş'**
+  String get noMediaYet;
+
+  /// No description provided for @fileAddedSuccess.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dosya başarıyla eklendi'**
+  String get fileAddedSuccess;
+
+  /// No description provided for @fileNotFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dosya bulunamadı'**
+  String get fileNotFound;
+
+  /// No description provided for @fileOpenFail.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dosya açılamadı: {msg}'**
+  String fileOpenFail(String msg);
+
+  /// No description provided for @openFile.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aç'**
+  String get openFile;
+
+  /// No description provided for @imageLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Resim: {name}'**
+  String imageLabel(String name);
+
+  /// No description provided for @audioFileLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ses dosyası: {name}'**
+  String audioFileLabel(String name);
+
+  /// No description provided for @fileLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dosya: {name}'**
+  String fileLabel(String name);
+
+  /// No description provided for @deleteAttachmentSemantic.
+  ///
+  /// In tr, this message translates to:
+  /// **'Eki sil'**
+  String get deleteAttachmentSemantic;
+
+  /// No description provided for @audioAttachment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ses eki'**
+  String get audioAttachment;
+
+  /// No description provided for @imageAttachment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Resim eki'**
+  String get imageAttachment;
+
+  /// No description provided for @fileAttachment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dosya eki'**
+  String get fileAttachment;
+
+  /// No description provided for @attachmentCount.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} ek'**
+  String attachmentCount(int count);
+
+  /// No description provided for @statusCompleted.
+  ///
+  /// In tr, this message translates to:
+  /// **'tamamlandı'**
+  String get statusCompleted;
+
+  /// No description provided for @statusUrgent.
+  ///
+  /// In tr, this message translates to:
+  /// **'acil'**
+  String get statusUrgent;
+
+  /// No description provided for @dateLabelFmt.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tarih: {date}'**
+  String dateLabelFmt(String date);
+
+  /// No description provided for @timeLabelFmt.
+  ///
+  /// In tr, this message translates to:
+  /// **'Saat: {time}'**
+  String timeLabelFmt(String time);
+
+  /// No description provided for @deleteConfirmFile.
+  ///
+  /// In tr, this message translates to:
+  /// **'\"{name}\" dosyasını silmek istiyor musunuz?'**
+  String deleteConfirmFile(String name);
 }
 
 class _AppLocalizationsDelegate

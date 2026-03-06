@@ -221,6 +221,7 @@ class UnifiedAgendaItem extends ConsumerWidget {
     );
 
     final semanticLabel = _buildSemanticLabel(
+      context,
       title,
       typeLabel,
       subtitleExtra,
@@ -250,6 +251,7 @@ class UnifiedAgendaItem extends ConsumerWidget {
   }
 
   String _buildSemanticLabel(
+    BuildContext context,
     String title,
     String typeLabel,
     String? subtitleExtra,
@@ -259,8 +261,8 @@ class UnifiedAgendaItem extends ConsumerWidget {
     final parts = <String>[typeLabel];
     parts.add(title);
     if (subtitleExtra != null) parts.add(subtitleExtra);
-    if (isCompleted) parts.add('tamamlandı');
-    if (isUrgent) parts.add('acil');
+    if (isCompleted) parts.add(AppLocalizations.of(context)!.statusCompleted);
+    if (isUrgent) parts.add(AppLocalizations.of(context)!.statusUrgent);
     return parts.join(', ');
   }
 
@@ -282,12 +284,16 @@ class UnifiedAgendaItem extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Tarih: ${DateFormat('d MMMM yyyy').format(event.date.toAppLocal)}',
+              AppLocalizations.of(context)!.dateLabelFmt(
+                DateFormat('d MMMM yyyy').format(event.date.toAppLocal),
+              ),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'Saat: ${DateFormat('HH:mm').format(event.date.toAppLocal)}',
+              AppLocalizations.of(context)!.timeLabelFmt(
+                DateFormat('HH:mm').format(event.date.toAppLocal),
+              ),
               style: theme.textTheme.bodyMedium,
             ),
             const Divider(height: 24),
@@ -314,11 +320,14 @@ class UnifiedAgendaItem extends ConsumerWidget {
               );
             },
             icon: Icon(Icons.delete_rounded, color: cs.error),
-            label: Text('Sil', style: TextStyle(color: cs.error)),
+            label: Text(
+              AppLocalizations.of(context)!.delete,
+              style: TextStyle(color: cs.error),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
         ],
       ),
@@ -377,7 +386,7 @@ class UnifiedAgendaItem extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('İptal'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () {
@@ -400,7 +409,7 @@ class UnifiedAgendaItem extends ConsumerWidget {
                   ),
                 );
               },
-              child: const Text('Kaydet'),
+              child: Text(AppLocalizations.of(context)!.save),
             ),
           ],
         ),

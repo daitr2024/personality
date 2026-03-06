@@ -803,4 +803,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String analysisError(String error) {
     return 'Analysis error: $error';
   }
+
+  @override
+  String mediaFilesCount(int count) {
+    return 'Media Files ($count)';
+  }
+
+  @override
+  String get addMedia => 'Add Media';
+
+  @override
+  String get noMediaYet => 'No media attached yet';
+
+  @override
+  String get fileAddedSuccess => 'File added successfully';
+
+  @override
+  String get fileNotFound => 'File not found';
+
+  @override
+  String fileOpenFail(String msg) {
+    return 'Cannot open file: $msg';
+  }
+
+  @override
+  String get openFile => 'Open';
+
+  @override
+  String imageLabel(String name) {
+    return 'Image: $name';
+  }
+
+  @override
+  String audioFileLabel(String name) {
+    return 'Audio: $name';
+  }
+
+  @override
+  String fileLabel(String name) {
+    return 'File: $name';
+  }
+
+  @override
+  String get deleteAttachmentSemantic => 'Delete attachment';
+
+  @override
+  String get audioAttachment => 'Audio attachment';
+
+  @override
+  String get imageAttachment => 'Image attachment';
+
+  @override
+  String get fileAttachment => 'File attachment';
+
+  @override
+  String attachmentCount(int count) {
+    return '$count attachments';
+  }
+
+  @override
+  String get statusCompleted => 'completed';
+
+  @override
+  String get statusUrgent => 'urgent';
+
+  @override
+  String dateLabelFmt(String date) {
+    return 'Date: $date';
+  }
+
+  @override
+  String timeLabelFmt(String time) {
+    return 'Time: $time';
+  }
+
+  @override
+  String deleteConfirmFile(String name) {
+    return 'Do you want to delete \"$name\"?';
+  }
 }

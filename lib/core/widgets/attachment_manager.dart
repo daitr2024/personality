@@ -38,7 +38,9 @@ class AttachmentManager extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Media Dosyaları (${attachments.length})',
+                  AppLocalizations.of(
+                    context,
+                  )!.mediaFilesCount(attachments.length),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -52,7 +54,7 @@ class AttachmentManager extends ConsumerWidget {
                       Icons.add_circle_outline,
                       color: Colors.blue,
                     ),
-                    tooltip: 'Dosya Ekle',
+                    tooltip: AppLocalizations.of(context)!.addFile,
                   ),
               ],
             ),
@@ -66,13 +68,13 @@ class AttachmentManager extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    Icon(Icons.attachment, color: Colors.grey, size: 32),
-                    Gap(8),
+                    const Icon(Icons.attachment, color: Colors.grey, size: 32),
+                    const Gap(8),
                     Text(
-                      'Henüz media eklenmemiş',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                      AppLocalizations.of(context)!.noMediaYet,
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
                     ),
                   ],
                 ),
@@ -153,8 +155,8 @@ class AttachmentManager extends ConsumerWidget {
                 ),
               ),
               const Gap(16),
-              const Text(
-                'Media Ekle',
+              Text(
+                AppLocalizations.of(context)!.addMedia,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Gap(12),
@@ -237,8 +239,8 @@ class AttachmentManager extends ConsumerWidget {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Dosya başarıyla eklendi'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.fileAddedSuccess),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -256,17 +258,17 @@ class AttachmentManager extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context)!.deleteMedia),
         content: Text(
-          '"${attachment.fileName}" dosyasını silmek istiyor musunuz?',
+          AppLocalizations.of(context)!.deleteConfirmFile(attachment.fileName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sil'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),

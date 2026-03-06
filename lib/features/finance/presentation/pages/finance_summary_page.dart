@@ -880,7 +880,7 @@ class FinanceSummaryPage extends ConsumerWidget {
                   Icons.delete_rounded,
                   color: AppTheme.urgentColor,
                 ),
-                title: const Text('Sil'),
+                title: Text(AppLocalizations.of(context)!.delete),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showDeleteConfirmation(context, ref, t);
@@ -990,7 +990,7 @@ class FinanceSummaryPage extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'İptal',
+              AppLocalizations.of(context)!.cancel,
               style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6)),
             ),
           ),
@@ -1023,7 +1023,7 @@ class FinanceSummaryPage extends ConsumerWidget {
               ),
               elevation: 0,
             ),
-            child: const Text('Kaydet'),
+            child: Text(AppLocalizations.of(context)!.save),
           ),
         ],
       ),
@@ -1066,7 +1066,7 @@ class FinanceSummaryPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1089,7 +1089,7 @@ class FinanceSummaryPage extends ConsumerWidget {
               ),
               elevation: 0,
             ),
-            child: const Text('Sil'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),
@@ -1309,7 +1309,7 @@ class FinanceSummaryPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -1492,7 +1492,7 @@ class FinanceSummaryPage extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('İptal'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1602,7 +1602,7 @@ class FinanceSummaryPage extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('İptal'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1616,7 +1616,7 @@ class FinanceSummaryPage extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Sil'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),

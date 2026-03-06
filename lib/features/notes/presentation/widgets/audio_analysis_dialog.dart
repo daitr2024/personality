@@ -678,7 +678,7 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
                   FocusManager.instance.primaryFocus?.unfocus();
                   Navigator.pop(context);
                 },
-                child: const Text('İptal'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -944,7 +944,7 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
                   FocusManager.instance.primaryFocus?.unfocus();
                   Navigator.pop(context);
                 },
-                child: const Text('İptal'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
               ElevatedButton.icon(
                 onPressed:

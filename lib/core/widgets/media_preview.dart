@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import '../database/app_database.dart';
 import '../../features/notes/presentation/widgets/audio_player_widget.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class MediaPreview extends StatelessWidget {
   final AttachmentEntity attachment;
@@ -24,7 +25,7 @@ class MediaPreview extends StatelessWidget {
               top: 4,
               right: 4,
               child: Semantics(
-                label: 'Eki sil',
+                label: AppLocalizations.of(context)!.deleteAttachmentSemantic,
                 button: true,
                 child: GestureDetector(
                   onTap: onDelete,
@@ -52,7 +53,7 @@ class MediaPreview extends StatelessWidget {
     switch (attachment.fileType) {
       case 'image':
         return Semantics(
-          label: 'Resim: ${attachment.fileName}',
+          label: AppLocalizations.of(context)!.imageLabel(attachment.fileName),
           image: true,
           child: GestureDetector(
             onTap: () => _showFullScreenImage(context),
@@ -69,7 +70,9 @@ class MediaPreview extends StatelessWidget {
         );
       case 'audio':
         return Semantics(
-          label: 'Ses dosyası: ${attachment.fileName}',
+          label: AppLocalizations.of(
+            context,
+          )!.audioFileLabel(attachment.fileName),
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -118,7 +121,10 @@ class MediaPreview extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () => _openFile(context),
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('Aç', style: TextStyle(fontSize: 12)),
+                  label: Text(
+                    AppLocalizations.of(context)!.openFile,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -133,7 +139,7 @@ class MediaPreview extends StatelessWidget {
         );
       default:
         return Semantics(
-          label: 'Dosya: ${attachment.fileName}',
+          label: AppLocalizations.of(context)!.fileLabel(attachment.fileName),
           child: const Center(
             child: Icon(Icons.insert_drive_file, size: 32, color: Colors.grey),
           ),
@@ -174,16 +180,20 @@ class MediaPreview extends StatelessWidget {
     final file = File(attachment.filePath);
     if (!file.existsSync()) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Dosya bulunamadı')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.fileNotFound)),
+        );
       }
       return;
     }
     final result = await OpenFilex.open(attachment.filePath);
     if (result.type != ResultType.done && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dosya açılamadı: ${result.message}')),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.fileOpenFail(result.message),
+          ),
+        ),
       );
     }
   }

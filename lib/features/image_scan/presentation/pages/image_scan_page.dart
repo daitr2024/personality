@@ -514,7 +514,9 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
                 // İptal butonu
                 OutlinedButton(
                   onPressed: () => setState(() => _uiImage = null),
-                  child: const Text('İPTAL'),
+                  child: Text(
+                    AppLocalizations.of(context)!.cancel.toUpperCase(),
+                  ),
                 ),
                 const Gap(8),
                 // Tümünü analiz et butonu
@@ -2224,7 +2226,7 @@ class _ContactEditDialogState extends State<ContactEditDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(
-            'İptal',
+            AppLocalizations.of(context)!.cancel,
             style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6)),
           ),
         ),

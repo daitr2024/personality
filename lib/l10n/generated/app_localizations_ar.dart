@@ -806,4 +806,82 @@ class AppLocalizationsAr extends AppLocalizations {
   String analysisError(String error) {
     return 'خطأ في التحليل: $error';
   }
+
+  @override
+  String mediaFilesCount(int count) {
+    return 'ملفات الوسائط ($count)';
+  }
+
+  @override
+  String get addMedia => 'إضافة وسائط';
+
+  @override
+  String get noMediaYet => 'لا توجد وسائط بعد';
+
+  @override
+  String get fileAddedSuccess => 'تم إضافة الملف بنجاح';
+
+  @override
+  String get fileNotFound => 'الملف غير موجود';
+
+  @override
+  String fileOpenFail(String msg) {
+    return 'تعذر فتح الملف: $msg';
+  }
+
+  @override
+  String get openFile => 'فتح';
+
+  @override
+  String imageLabel(String name) {
+    return 'صورة: $name';
+  }
+
+  @override
+  String audioFileLabel(String name) {
+    return 'ملف صوتي: $name';
+  }
+
+  @override
+  String fileLabel(String name) {
+    return 'ملف: $name';
+  }
+
+  @override
+  String get deleteAttachmentSemantic => 'حذف المرفق';
+
+  @override
+  String get audioAttachment => 'مرفق صوتي';
+
+  @override
+  String get imageAttachment => 'مرفق صورة';
+
+  @override
+  String get fileAttachment => 'مرفق ملف';
+
+  @override
+  String attachmentCount(int count) {
+    return '$count مرفقات';
+  }
+
+  @override
+  String get statusCompleted => 'مكتمل';
+
+  @override
+  String get statusUrgent => 'عاجل';
+
+  @override
+  String dateLabelFmt(String date) {
+    return 'التاريخ: $date';
+  }
+
+  @override
+  String timeLabelFmt(String time) {
+    return 'الوقت: $time';
+  }
+
+  @override
+  String deleteConfirmFile(String name) {
+    return 'هل تريد حذف \"$name\"?';
+  }
 }
