@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
+import '../utils/date_utils.dart';
 import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 
@@ -95,14 +96,15 @@ class HomeWidgetService {
         if (item is TaskEntity) {
           final isOverdue =
               item.date != null && item.date!.isBefore(todayStart);
-          final timeStr = item.date != null
-              ? '${item.date!.hour.toString().padLeft(2, '0')}:${item.date!.minute.toString().padLeft(2, '0')}'
+          final localDate = item.date?.toAppLocal;
+          final timeStr = localDate != null
+              ? '${localDate.hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')}'
               : '';
           final urgentMark = item.isUrgent ? '❗' : '';
           final overdueMark = isOverdue ? '⚠️ ' : '';
           displayItems.add('$timeStr $overdueMark$urgentMark${item.title}');
         } else if (item is CalendarEventEntity) {
-          final time = item.startTime ?? item.date;
+          final time = (item.startTime ?? item.date).toAppLocal;
           final timeStr =
               '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
           displayItems.add('$timeStr 📅 ${item.title}');

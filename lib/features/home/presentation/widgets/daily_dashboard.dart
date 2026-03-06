@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:device_calendar/device_calendar.dart' as dc;
 import '../../../../config/theme/app_theme.dart';
 import '../providers/dashboard_providers.dart';
+import '../../../../core/utils/date_utils.dart';
 import '../../../tasks/presentation/providers/task_providers.dart';
 import '../../../calendar/presentation/providers/calendar_providers.dart';
 import '../../../notes/presentation/providers/note_providers.dart';
@@ -99,13 +100,13 @@ class DailyDashboard extends ConsumerWidget {
   String _getFormattedTime(dynamic item) {
     DateTime? dt;
     if (item is TaskEntity) {
-      dt = item.date?.toLocal();
+      dt = item.date?.toAppLocal;
     } else if (item is CalendarEventEntity) {
-      dt = item.date.toLocal();
+      dt = item.date.toAppLocal;
     } else if (item is dc.Event) {
-      dt = item.start?.toLocal();
+      dt = item.start?.toAppLocal;
     } else if (item is NoteEntity) {
-      dt = item.date.toLocal();
+      dt = item.date.toAppLocal;
     }
 
     return dt != null ? DateFormat('HH:mm').format(dt) : '--:--';
@@ -247,7 +248,10 @@ class DailyDashboard extends ConsumerWidget {
         widgets.add(
           _buildDetailRow(
             Icons.calendar_today_rounded,
-            DateFormat('d MMMM yyyy, EEEE', localeCode).format(item.date!),
+            DateFormat(
+              'd MMMM yyyy, EEEE',
+              localeCode,
+            ).format(item.date!.toAppLocal),
             cs,
           ),
         );
@@ -255,7 +259,7 @@ class DailyDashboard extends ConsumerWidget {
         widgets.add(
           _buildDetailRow(
             Icons.access_time_rounded,
-            DateFormat('HH:mm', localeCode).format(item.date!),
+            DateFormat('HH:mm', localeCode).format(item.date!.toAppLocal),
             cs,
           ),
         );
@@ -288,7 +292,10 @@ class DailyDashboard extends ConsumerWidget {
       widgets.add(
         _buildDetailRow(
           Icons.calendar_today_rounded,
-          DateFormat('d MMMM yyyy, EEEE', localeCode).format(item.date),
+          DateFormat(
+            'd MMMM yyyy, EEEE',
+            localeCode,
+          ).format(item.date.toAppLocal),
           cs,
         ),
       );
@@ -297,10 +304,11 @@ class DailyDashboard extends ConsumerWidget {
       if (item.startTime != null || item.endTime != null) {
         String timeRange = '';
         if (item.startTime != null) {
-          timeRange = DateFormat('HH:mm').format(item.startTime!);
+          timeRange = DateFormat('HH:mm').format(item.startTime!.toAppLocal);
         }
         if (item.endTime != null) {
-          timeRange += ' — ${DateFormat('HH:mm').format(item.endTime!)}';
+          timeRange +=
+              ' — ${DateFormat('HH:mm').format(item.endTime!.toAppLocal)}';
         }
         widgets.add(_buildDetailRow(Icons.access_time_rounded, timeRange, cs));
         widgets.add(const Gap(8));
@@ -309,7 +317,7 @@ class DailyDashboard extends ConsumerWidget {
         widgets.add(
           _buildDetailRow(
             Icons.access_time_rounded,
-            DateFormat('HH:mm').format(item.date),
+            DateFormat('HH:mm').format(item.date.toAppLocal),
             cs,
           ),
         );
@@ -321,15 +329,18 @@ class DailyDashboard extends ConsumerWidget {
         widgets.add(
           _buildDetailRow(
             Icons.calendar_today_rounded,
-            DateFormat('d MMMM yyyy, EEEE', localeCode).format(item.start!),
+            DateFormat(
+              'd MMMM yyyy, EEEE',
+              localeCode,
+            ).format(item.start!.toAppLocal),
             cs,
           ),
         );
         widgets.add(const Gap(8));
         // Time range
-        String timeRange = DateFormat('HH:mm').format(item.start!);
+        String timeRange = DateFormat('HH:mm').format(item.start!.toAppLocal);
         if (item.end != null) {
-          timeRange += ' — ${DateFormat('HH:mm').format(item.end!)}';
+          timeRange += ' — ${DateFormat('HH:mm').format(item.end!.toAppLocal)}';
         }
         widgets.add(_buildDetailRow(Icons.access_time_rounded, timeRange, cs));
         widgets.add(const Gap(8));
@@ -448,8 +459,8 @@ class DailyDashboard extends ConsumerWidget {
   void _handleEdit(BuildContext context, WidgetRef ref, dynamic item) {
     if (item is TaskEntity) {
       final controller = TextEditingController(text: item.title);
-      DateTime? selectedDate = item.date;
-      DateTime? reminderTime = item.reminderTime;
+      DateTime? selectedDate = item.date?.toAppLocal;
+      DateTime? reminderTime = item.reminderTime?.toAppLocal;
       bool reminderEnabled = item.reminderEnabled;
 
       showDialog(
@@ -638,7 +649,10 @@ class DailyDashboard extends ConsumerWidget {
       );
     } else if (item is CalendarEventEntity) {
       final controller = TextEditingController(text: item.title);
-      DateTime selectedDate = item.date;
+      DateTime selectedDate = item.date.toAppLocal;
+      debugPrint(
+        '📅 EDIT OPEN: item.date=${item.date} isUtc=${item.date.isUtc} → toAppLocal=$selectedDate hour=${selectedDate.hour}',
+      );
       int reminderMinutes = item.reminderMinutesBefore ?? 15;
       bool reminderEnabled = item.reminderEnabled;
 
@@ -750,6 +764,12 @@ class DailyDashboard extends ConsumerWidget {
                           reminderEnabled: reminderEnabled,
                           reminderMinutesBefore: reminderMinutes,
                         );
+                    debugPrint(
+                      '📅 SAVE: selectedDate=$selectedDate isUtc=${selectedDate.isUtc} hour=${selectedDate.hour} minute=${selectedDate.minute}',
+                    );
+                    debugPrint(
+                      '📅 SAVE: epoch=${selectedDate.millisecondsSinceEpoch}',
+                    );
                     Navigator.pop(context);
                   }
                 },
@@ -761,7 +781,7 @@ class DailyDashboard extends ConsumerWidget {
       );
     } else if (item is dc.Event) {
       final controller = TextEditingController(text: item.title);
-      DateTime selectedDate = item.start ?? DateTime.now();
+      DateTime selectedDate = item.start?.toAppLocal ?? DateTime.now();
 
       showDialog(
         context: context,
@@ -1077,14 +1097,14 @@ class DailyDashboard extends ConsumerWidget {
           ? Icons.check_circle_rounded
           : Icons.circle_outlined;
       if (item.date != null) {
-        subtitle = DateFormat('d MMM HH:mm').format(item.date!);
+        subtitle = DateFormat('d MMM HH:mm').format(item.date!.toAppLocal);
       }
     } else if (item is CalendarEventEntity) {
       title = item.title;
       typeLabel = 'Etkinlik';
       itemColor = AppTheme.eventColor;
       leadingIcon = Icons.event_rounded;
-      subtitle = DateFormat('d MMM HH:mm').format(item.date);
+      subtitle = DateFormat('d MMM HH:mm').format(item.date.toAppLocal);
     } else if (item is dc.Event) {
       title = item.title ?? '';
       typeLabel = 'Takvim';
@@ -1092,15 +1112,15 @@ class DailyDashboard extends ConsumerWidget {
       leadingIcon = Icons.calendar_month_rounded;
       if (item.start != null) {
         subtitle = item.allDay == true
-            ? '${DateFormat('d MMM').format(item.start!)} • Tüm Gün'
-            : DateFormat('d MMM HH:mm').format(item.start!);
+            ? '${DateFormat('d MMM').format(item.start!.toAppLocal)} • Tüm Gün'
+            : DateFormat('d MMM HH:mm').format(item.start!.toAppLocal);
       }
     } else if (item is NoteEntity) {
       title = item.content;
       typeLabel = 'Not';
       itemColor = AppTheme.noteColor;
       leadingIcon = Icons.note_alt_outlined;
-      subtitle = DateFormat('d MMM HH:mm').format(item.date);
+      subtitle = DateFormat('d MMM HH:mm').format(item.date.toAppLocal);
     }
 
     return Dismissible(

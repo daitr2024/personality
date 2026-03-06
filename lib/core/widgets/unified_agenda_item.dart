@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../utils/date_utils.dart';
 import 'package:device_calendar/device_calendar.dart' as dc;
 import '../../config/theme/app_theme.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -46,10 +47,10 @@ class UnifiedAgendaItem extends ConsumerWidget {
       final event = item as CalendarEventEntity;
       title = event.title;
       typeLabel = l10n.event;
-      subtitleExtra = DateFormat('HH:mm').format(event.date);
+      subtitleExtra = DateFormat('HH:mm').format(event.date.toAppLocal);
       if (showDate) {
         subtitleExtra =
-            '${DateFormat('d MMM').format(event.date)} • $subtitleExtra';
+            '${DateFormat('d MMM').format(event.date.toAppLocal)} • $subtitleExtra';
       }
       leadingIcon = Icons.event_rounded;
       iconColor = AppTheme.eventColor;
@@ -76,10 +77,10 @@ class UnifiedAgendaItem extends ConsumerWidget {
       title = event.title ?? l10n.unnamedEvent;
       typeLabel = l10n.externalEvent;
       if (event.start != null) {
-        subtitleExtra = DateFormat('HH:mm').format(event.start!);
+        subtitleExtra = DateFormat('HH:mm').format(event.start!.toAppLocal);
         if (showDate) {
           subtitleExtra =
-              '${DateFormat('d MMM').format(event.start!)} • $subtitleExtra';
+              '${DateFormat('d MMM').format(event.start!.toAppLocal)} • $subtitleExtra';
         }
       }
       leadingIcon = Icons.sync_rounded;
@@ -101,7 +102,7 @@ class UnifiedAgendaItem extends ConsumerWidget {
       };
 
       if (showDate && task.date != null) {
-        subtitleExtra = DateFormat('d MMM').format(task.date!);
+        subtitleExtra = DateFormat('d MMM').format(task.date!.toAppLocal);
       }
 
       if (onEdit != null || isUrgent) {
@@ -133,9 +134,9 @@ class UnifiedAgendaItem extends ConsumerWidget {
       title = note.content;
       typeLabel = l10n.note;
       if (showDate) {
-        subtitleExtra = DateFormat('d MMM HH:mm').format(note.date);
+        subtitleExtra = DateFormat('d MMM HH:mm').format(note.date.toAppLocal);
       } else {
-        subtitleExtra = DateFormat('HH:mm').format(note.date);
+        subtitleExtra = DateFormat('HH:mm').format(note.date.toAppLocal);
       }
       leadingIcon = Icons.note_alt_outlined;
       iconColor = AppTheme.noteColor;
@@ -253,12 +254,12 @@ class UnifiedAgendaItem extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Tarih: ${DateFormat('d MMMM yyyy').format(event.date)}',
+              'Tarih: ${DateFormat('d MMMM yyyy').format(event.date.toAppLocal)}',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'Saat: ${DateFormat('HH:mm').format(event.date)}',
+              'Saat: ${DateFormat('HH:mm').format(event.date.toAppLocal)}',
               style: theme.textTheme.bodyMedium,
             ),
             const Divider(height: 24),
@@ -278,9 +279,11 @@ class UnifiedAgendaItem extends ConsumerWidget {
             onPressed: () {
               Navigator.pop(context);
               ref.read(calendarRepositoryProvider).deleteEvent(event.id);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.eventDeleted)));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppLocalizations.of(context)!.eventDeleted),
+                ),
+              );
             },
             icon: Icon(Icons.delete_rounded, color: cs.error),
             label: Text('Sil', style: TextStyle(color: cs.error)),
@@ -299,8 +302,8 @@ class UnifiedAgendaItem extends ConsumerWidget {
     WidgetRef ref,
     CalendarEventEntity event,
   ) {
-    DateTime selectedDate = event.date;
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(event.date);
+    DateTime selectedDate = event.date.toAppLocal;
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(event.date.toAppLocal);
 
     showDialog(
       context: context,
@@ -364,7 +367,9 @@ class UnifiedAgendaItem extends ConsumerWidget {
 
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context)!.eventUpdated)),
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.eventUpdated),
+                  ),
                 );
               },
               child: const Text('Kaydet'),

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/utils/date_utils.dart';
 
 import '../../../tasks/presentation/providers/task_providers.dart';
 import '../../../calendar/presentation/providers/calendar_providers.dart';
@@ -67,11 +68,11 @@ bool _isTaskOnDate(TaskEntity task, DateTime selectedDate) {
   if (task.date == null) return false;
 
   // 1. Direct match
-  if (isSameDay(task.date!.toLocal(), selectedDate)) return true;
+  if (task.date!.isSameDayLocal(selectedDate)) return true;
 
   // 2. Recurrence check
   if (task.isRecurring) {
-    final taskLocalDate = task.date!.toLocal();
+    final taskLocalDate = task.date!.toAppLocal;
     // Cannot be before start date
     if (selectedDate.isBefore(
       DateTime(taskLocalDate.year, taskLocalDate.month, taskLocalDate.day),
@@ -127,7 +128,7 @@ final overdueTasksProvider = Provider<AsyncValue<List<TaskEntity>>>((ref) {
       // unless we implement instance-based completion. For now, keep it simple.
       if (task.isRecurring) return false;
 
-      return task.date!.isBefore(todayStart);
+      return task.date!.toAppLocal.isBefore(todayStart);
     }).toList();
   });
 });
@@ -140,14 +141,14 @@ final dailyEventsProvider = Provider<AsyncValue<List<dynamic>>>((ref) {
   return eventsAsync.whenData((events) {
     return events.where((event) {
       if (event is CalendarEventEntity) {
-        return isSameDay(event.date.toLocal(), selectedDate);
+        return event.date.isSameDayLocal(selectedDate);
       } else if (event is Event) {
         final start = event.start;
         if (start == null) return false;
 
         // Correctly handle UTC to Local conversion for device events
-        final localStart = start.isUtc ? start.toLocal() : start;
-        return isSameDay(localStart, selectedDate);
+        final localStart = start.toAppLocal;
+        return localStart.isSameDayLocal(selectedDate);
       }
       return false;
     }).toList();
@@ -161,7 +162,7 @@ final dailyNotesProvider = Provider<AsyncValue<List<NoteEntity>>>((ref) {
 
   return notesAsync.whenData((notes) {
     return notes.where((note) {
-      return isSameDay(note.date.toLocal(), selectedDate);
+      return note.date.toAppLocal.isSameDayLocal(selectedDate);
     }).toList();
   });
 });
@@ -202,14 +203,20 @@ final dayItemsTypeProvider = Provider.family<Set<ItemType>, DateTime>((
     types.add(ItemType.task);
   }
   if (eventsAsync.value?.any((e) {
-        if (e is CalendarEventEntity) return isSameDay(e.date, date);
-        if (e is Event && e.start != null) return isSameDay(e.start!, date);
+        if (e is CalendarEventEntity) {
+          return e.date.toAppLocal.isSameDayLocal(date);
+        }
+        if (e is Event && e.start != null) {
+          final localStart = e.start!.toAppLocal;
+          return localStart.isSameDayLocal(date);
+        }
         return false;
       }) ??
       false) {
     types.add(ItemType.event);
   }
-  if (notesAsync.value?.any((n) => isSameDay(n.date, date)) ?? false) {
+  if (notesAsync.value?.any((n) => n.date.toAppLocal.isSameDayLocal(date)) ??
+      false) {
     types.add(ItemType.note);
   }
   return types;
@@ -277,9 +284,11 @@ final nearFutureItemsProvider = Provider<AsyncValue<List<dynamic>>>((ref) {
 });
 
 DateTime _getItemDate(dynamic item) {
-  if (item is TaskEntity) return item.date!;
-  if (item is CalendarEventEntity) return item.date;
-  if (item is Event && item.start != null) return item.start!;
-  if (item is NoteEntity) return item.date;
+  if (item is TaskEntity) return item.date!.toAppLocal;
+  if (item is CalendarEventEntity) return item.date.toAppLocal;
+  if (item is Event && item.start != null) {
+    return item.start!.toAppLocal;
+  }
+  if (item is NoteEntity) return item.date.toAppLocal;
   return DateTime(0);
 }

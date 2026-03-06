@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/services/reminder_scheduler.dart';
 import '../../../../core/services/home_widget_service.dart';
@@ -96,6 +97,11 @@ class CalendarRepository {
     int? reminderMinutesBefore,
     bool? reminderEnabled,
   }) async {
+    if (date != null) {
+      debugPrint(
+        '📅 REPO updateEvent: date=$date isUtc=${date.isUtc} hour=${date.hour} ms=${date.millisecondsSinceEpoch}',
+      );
+    }
     await (_db.update(_db.calendarEvents)..where((t) => t.id.equals(id))).write(
       CalendarEventsCompanion(
         title: Value(title),

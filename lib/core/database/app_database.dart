@@ -163,8 +163,14 @@ class Profiles extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  // CRITICAL: Store dates as integer epoch, NOT as UTC text.
+  // This ensures DateTimes are read back as local time automatically.
   @override
-  int get schemaVersion => 14;
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: false);
+
+  @override
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -363,6 +369,37 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(attachments, attachments.eventId);
           } catch (e) {
             // ignore: empty_catches
+          }
+        }
+        if (from < 15) {
+          // Convert all text datetime columns to integer epoch (seconds)
+          // because we switched storeDateTimeAsText from true to false.
+          final dateColumns = <String, List<String>>{
+            'transactions': ['date'],
+            'notes': ['date', 'deleted_at'],
+            'tasks': [
+              'date',
+              'deleted_at',
+              'reminder_time',
+              'recurrence_end_date',
+            ],
+            'calendar_events': ['date', 'start_time', 'end_time', 'deleted_at'],
+            'tags': ['created_at'],
+            'attachments': ['created_at'],
+            'productivity_stats': ['date'],
+            'profiles': ['updated_at'],
+          };
+          for (final entry in dateColumns.entries) {
+            for (final col in entry.value) {
+              try {
+                await customStatement(
+                  "UPDATE ${entry.key} SET $col = CAST(strftime('%s', $col) AS INTEGER) "
+                  "WHERE $col IS NOT NULL AND typeof($col) = 'text'",
+                );
+              } catch (e) {
+                // ignore: column might not exist yet
+              }
+            }
           }
         }
       },

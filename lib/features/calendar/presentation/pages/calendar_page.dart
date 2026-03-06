@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/date_utils.dart';
 import '../providers/calendar_providers.dart';
 import '../../../tasks/presentation/providers/task_providers.dart';
 import '../../../../core/database/app_database.dart';
@@ -185,20 +186,22 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             data: (allTasks) {
               final dailyEvents = allEvents.where((e) {
                 if (e is CalendarEventEntity) {
-                  return isSameDay(e.date, _selectedDay);
+                  return e.date.isSameDayLocal(_selectedDay);
                 } else if (e is dc.Event) {
                   final start = e.start;
                   if (start == null) return false;
-                  return isSameDay(
-                    DateTime(start.year, start.month, start.day),
-                    _selectedDay,
-                  );
+                  return DateTime(
+                    start.year,
+                    start.month,
+                    start.day,
+                  ).isSameDayLocal(_selectedDay);
                 }
                 return false;
               }).toList();
               final dailyTasks = allTasks
                   .where(
-                    (t) => t.date != null && isSameDay(t.date!, _selectedDay),
+                    (t) =>
+                        t.date != null && t.date!.isSameDayLocal(_selectedDay),
                   )
                   .toList();
 
@@ -225,7 +228,8 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     startingDayOfWeek: StartingDayOfWeek.monday,
                     calendarFormat: _calendarFormat,
                     locale: Localizations.localeOf(context).toString(),
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    selectedDayPredicate: (day) =>
+                        _selectedDay.isSameDayLocal(day),
                     onDaySelected: (selectedDay, focusedDay) {
                       setState(() {
                         _selectedDay = selectedDay;
@@ -240,20 +244,22 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     eventLoader: (day) {
                       final dayEvents = allEvents.where((e) {
                         if (e is CalendarEventEntity) {
-                          return isSameDay(e.date, day);
+                          return e.date.isSameDayLocal(day);
                         } else if (e is dc.Event) {
                           final start = e.start;
                           if (start == null) return false;
-                          return isSameDay(
-                            DateTime(start.year, start.month, start.day),
-                            day,
-                          );
+                          return DateTime(
+                            start.year,
+                            start.month,
+                            start.day,
+                          ).isSameDayLocal(day);
                         }
                         return false;
                       }).toList();
                       final dayTasks = allTasks
                           .where(
-                            (t) => t.date != null && isSameDay(t.date!, day),
+                            (t) =>
+                                t.date != null && t.date!.isSameDayLocal(day),
                           )
                           .toList();
                       return [...dayEvents, ...dayTasks];
@@ -336,5 +342,3 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     );
   }
 }
-
-

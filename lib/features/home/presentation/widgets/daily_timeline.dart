@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 import 'package:device_calendar/device_calendar.dart' as dc;
+import '../../../../core/utils/date_utils.dart';
 
 import '../../../../config/theme/app_theme.dart';
 import '../../../../core/database/app_database.dart';
@@ -39,7 +40,7 @@ class DailyTimeline extends ConsumerWidget {
     // For sorting items on a specific daily view, we must treat them as
     // occurring on the 'selectedDate' but at their original local time.
     // This fixes sorting for recurring tasks created on different dates.
-    final l = original.toLocal();
+    final l = original.toAppLocal;
     return DateTime(
       selectedDate.year,
       selectedDate.month,

@@ -156,7 +156,7 @@ class RecurringTaskService {
         return currentDate.add(const Duration(days: 7));
 
       case RecurrencePattern.monthly:
-        return DateTime(
+        return DateTime.utc(
           currentDate.year,
           currentDate.month + 1,
           currentDate.day,

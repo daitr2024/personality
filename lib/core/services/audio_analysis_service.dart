@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'ai_config_service.dart';
 import '../utils/turkish_nlp_utils.dart';
+import '../utils/date_utils.dart';
 
 class AnalysisResult {
   final List<AnalysisTask> tasks;
@@ -71,13 +73,16 @@ class AnalysisTask {
 
     if (isTomorrowInText &&
         (parsedDate == null ||
-            DateFormat('yyyy-MM-dd').format(parsedDate) == todayStr)) {
-      parsedDate = DateTime(
+            DateFormat('yyyy-MM-dd').format(parsedDate.toAppLocal) ==
+                todayStr)) {
+      final baseDate = parsedDate ?? now;
+      parsedDate = tz.TZDateTime(
+        tz.local,
         now.year,
         now.month,
         now.day + 1,
-        parsedDate?.hour ?? 9,
-        parsedDate?.minute ?? 0,
+        baseDate.hour,
+        baseDate.minute,
       );
     }
 
@@ -96,8 +101,14 @@ class AnalysisTask {
 
   static DateTime? _parseFlexibleDate(dynamic dateValue) {
     if (dateValue == null) return null;
-    if (dateValue is DateTime) return dateValue;
-    final String s = dateValue.toString();
+    if (dateValue is DateTime) {
+      // If already local, return as-is. If UTC, convert to local.
+      return dateValue.isUtc ? dateValue.toLocal() : dateValue;
+    }
+    String s = dateValue.toString();
+    // Strip timezone suffixes BEFORE parsing so DateTime.parse treats
+    // the wall-clock time as local (e.g. "18:00+03:00" → "18:00" local).
+    s = _stripTimezone(s);
     try {
       return DateTime.parse(s);
     } catch (_) {
@@ -108,6 +119,18 @@ class AnalysisTask {
       } catch (_) {}
     }
     return null;
+  }
+
+  /// Strip timezone suffixes (Z, +03:00, -05:00, +0300, etc.) from an
+  /// ISO 8601 string so that DateTime.parse treats it as local time.
+  static String _stripTimezone(String s) {
+    // Remove trailing Z
+    if (s.endsWith('Z') || s.endsWith('z')) {
+      return s.substring(0, s.length - 1);
+    }
+    // Remove +HH:MM or -HH:MM or +HHMM at the end
+    final tzRegex = RegExp(r'[+-]\d{2}:?\d{2}$');
+    return s.replaceFirst(tzRegex, '');
   }
 }
 
@@ -253,11 +276,12 @@ class AudioAnalysisService {
             'العنوان: فقط اسم الإجراء. أزل عبارات مثل "أضف مهمة"، "احفظ".\n'
             'التاريخ: "غداً" → $tomorrow\n'
             'اليوم: $formattedDate ($dayName)\n\n'
+            'تنسيق التاريخ: YYYY-MM-DDTHH:MM:SS بدون منطقة زمنية. لا تضف Z أو +03:00. استخدم التوقيت المحلي فقط.\n\n'
             'المهام المتكررة:\n'
             'اكتشف أنماط مثل "كل يوم"، "أسبوعي".\n'
             '{"isRecurring":true,"recurrencePattern":"daily|weekly","recurrenceDays":["Monday"]}\n\n'
             'أعد JSON فقط:\n'
-            '{"tasks":[{"title":"","date":"ISO8601","isRecurring":false}],"events":[{"title":"","date":"ISO8601"}],"notes":[]}\n\n'
+            '{"tasks":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS","isRecurring":false}],"events":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS"}],"notes":[]}\n\n'
             'النص: "$cleanedText"';
       case 'en':
         return 'Analyze the text and extract Tasks, Events, or Notes.\n\n'
@@ -268,11 +292,12 @@ class AudioAnalysisService {
             'TITLE: Only the action name. Remove phrases like "add task", "save".\n'
             'DATE: "tomorrow" → $tomorrow\n'
             'Today: $formattedDate ($dayName)\n\n'
+            'DATE FORMAT: YYYY-MM-DDTHH:MM:SS without timezone. Do NOT add Z or +03:00. Use local time only.\n\n'
             'RECURRING TASKS:\n'
             'Detect patterns like "every day", "weekly".\n'
             '{"isRecurring":true,"recurrencePattern":"daily|weekly","recurrenceDays":["Monday"]}\n\n'
             'Return ONLY JSON:\n'
-            '{"tasks":[{"title":"","date":"ISO8601","isRecurring":false}],"events":[{"title":"","date":"ISO8601"}],"notes":[]}\n\n'
+            '{"tasks":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS","isRecurring":false}],"events":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS"}],"notes":[]}\n\n'
             'Text: "$cleanedText"';
       default: // Turkish
         return 'Metni analiz et ve Görevler, Etkinlikler veya Notlar olarak çıkar.\n\n'
@@ -283,11 +308,12 @@ class AudioAnalysisService {
             'BAŞLIK: Sadece eylem adı olsun. "görevi ekle", "kaydet" gibi ifadeleri çıkar.\n'
             'TARİH: "yarın" → $tomorrow\n'
             'Bugün: $formattedDate ($dayName)\n\n'
+            'TARİH FORMATI: YYYY-MM-DDTHH:MM:SS saat dilimi EKLEMEYİN. Z veya +03:00 KULLANMAYIN. Sadece yerel saat yazın.\n\n'
             'TEKRARLAYAN GÖREVLER:\n'
             '"her gün", "haftalık" gibi kalıpları tespit et.\n'
             '{"isRecurring":true,"recurrencePattern":"daily|weekly","recurrenceDays":["Monday"]}\n\n'
             'SADECE JSON dön:\n'
-            '{"tasks":[{"title":"","date":"ISO8601","isRecurring":false}],"events":[{"title":"","date":"ISO8601"}],"notes":[]}\n\n'
+            '{"tasks":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS","isRecurring":false}],"events":[{"title":"","date":"YYYY-MM-DDTHH:MM:SS"}],"notes":[]}\n\n'
             'Metin: "$cleanedText"';
     }
   }

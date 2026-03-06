@@ -12,6 +12,7 @@ import '../../../../features/settings/presentation/providers/locale_provider.dar
 import '../../../../features/settings/presentation/providers/ai_config_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../features/tasks/presentation/providers/attachment_providers.dart';
+import '../../../../core/utils/date_utils.dart';
 
 class AudioAnalysisDialog extends ConsumerStatefulWidget {
   final String? text;
@@ -381,9 +382,13 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
     } catch (e) {
       debugPrint('Save error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred(e.toString()))));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.errorOccurred(e.toString()),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -512,7 +517,7 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
                             ? DateFormat(
                                 'd MMM y HH:mm',
                                 Localizations.localeOf(context).toString(),
-                              ).format(selectedDate!)
+                              ).format(selectedDate!.toAppLocal)
                             : AppLocalizations.of(
                                 context,
                               )!.noDateSelectedNoteHint,
@@ -799,7 +804,7 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
                     subtitleText = DateFormat(
                       'd MMM y HH:mm',
                       Localizations.localeOf(context).toString(),
-                    ).format(taskDate);
+                    ).format(taskDate.toAppLocal);
                   }
                   if (isRecurring) {
                     subtitleText +=
@@ -872,7 +877,7 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
                           ? DateFormat(
                               'd MMM y HH:mm',
                               Localizations.localeOf(context).toString(),
-                            ).format(event.date!)
+                            ).format(event.date!.toAppLocal)
                           : AppLocalizations.of(context)!.noDate,
                     ),
                     isSelected: _selectedEvents.contains(event),

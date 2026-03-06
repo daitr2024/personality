@@ -174,17 +174,32 @@ class ImageAnalysisService {
 
   DateTime? _tryParseDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return null;
+    // Strip timezone suffixes BEFORE parsing so DateTime.parse treats
+    // the wall-clock time as local (e.g. "18:00+03:00" → "18:00" local).
+    final cleaned = _stripTimezone(dateStr);
     try {
-      return DateTime.parse(dateStr);
+      return DateTime.parse(cleaned);
     } catch (_) {
       try {
         // Try date-only format YYYY-MM-DD
-        if (dateStr.length == 10) {
-          return DateTime.parse('${dateStr}T00:00:00');
+        if (cleaned.length == 10) {
+          return DateTime.parse('${cleaned}T00:00:00');
         }
       } catch (_) {}
     }
     return null;
+  }
+
+  /// Strip timezone suffixes (Z, +03:00, -05:00, +0300, etc.) from an
+  /// ISO 8601 string so that DateTime.parse treats it as local time.
+  static String _stripTimezone(String s) {
+    // Remove trailing Z
+    if (s.endsWith('Z') || s.endsWith('z')) {
+      return s.substring(0, s.length - 1);
+    }
+    // Remove +HH:MM or -HH:MM or +HHMM at the end
+    final tzRegex = RegExp(r'[+-]\d{2}:?\d{2}$');
+    return s.replaceFirst(tzRegex, '');
   }
 
   static String _getVisionPrompt(
@@ -209,6 +224,7 @@ class ImageAnalysisService {
             'قواعد التاريخ:\n'
             '- استخدم التاريخ المكتوب في الصورة كما هو.\n'
             '- "غداً"، "الجمعة القادمة" = احسبها من اليوم.\n'
+            'تنسيق التاريخ: YYYY-MM-DDTHH:MM:SS بدون منطقة زمنية. لا تضف Z أو +03:00.\n'
             '- إذا لم يوجد تاريخ، استخدم تاريخ اليوم: $currentDate\n'
             '- إذا لم يوجد وقت للحدث، افترض 09:00.\n\n'
             'تاريخ اليوم: $currentDate، الوقت: $currentTime\n\n'
@@ -237,6 +253,7 @@ class ImageAnalysisService {
             'DATE RULES:\n'
             '- Use the date written in the image as-is.\n'
             '- "Tomorrow", "next Friday" = calculate from today.\n'
+            'DATE FORMAT: YYYY-MM-DDTHH:MM:SS without timezone. Do NOT add Z or +03:00.\n'
             '- If no date found, use today: $currentDate\n'
             '- If no event time, assume 09:00.\n\n'
             'Today\'s date: $currentDate, Time: $currentTime\n\n'
@@ -268,6 +285,7 @@ class ImageAnalysisService {
             'TARİH KURALLARI:\n'
             '- Görselde yazılı tarihi (ör: "5 Mart", "15/03/2026") AYNEN kullan.\n'
             '- "Yarın", "önümüzdeki Cuma" gibi ifadeleri bugüne göre hesapla.\n'
+            'TARİH FORMATI: YYYY-MM-DDTHH:MM:SS saat dilimi eklemeyin. Z veya +03:00 kullanmayın.\n'
             '- Tarih yoksa bugünün tarihini kullan: $currentDate\n'
             '- Etkinlik saati yoksa 09:00 varsay.\n\n'
             'Bugünün tarihi: $currentDate, Saat: $currentTime\n\n'
