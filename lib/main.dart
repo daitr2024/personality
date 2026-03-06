@@ -17,7 +17,7 @@ void main() async {
   tz.initializeTimeZones();
   final String timeZoneName = await FlutterTimezone.getLocalTimezone();
   tz.setLocalLocation(tz.getLocation(timeZoneName));
-  print('🕐 TIMEZONE INIT: $timeZoneName → tz.local=${tz.local}');
+  debugPrint('🕐 TIMEZONE INIT: $timeZoneName → tz.local=${tz.local}');
 
   // Initialize notification service
   final notificationService = NotificationService();

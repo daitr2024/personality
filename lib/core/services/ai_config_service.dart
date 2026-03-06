@@ -21,16 +21,12 @@ class AIConfigService {
   static const _keyVisionEndpointBackup = 'vision_api_endpoint_backup';
   static const _keyVisionKeyBackup = 'vision_api_key_backup';
   static const _keyVisionModelBackup = 'vision_model_backup';
-  static const _keyTemperature = 'ai_temperature';
-  static const _keyMaxTokens = 'ai_max_tokens';
   static const _keyAlwaysUseLocalSTT = 'always_use_local_stt';
 
   // Default values (Gemini Focused)
   static const _defaultEndpoint =
       'https://generativelanguage.googleapis.com/v1beta/openai/v1';
   static const _defaultModel = 'gemini-2.0-flash';
-  static const _defaultTemperature = 0.7;
-  static const _defaultMaxTokens = 2000;
 
   /// Get API endpoint
   Future<String> getEndpoint() async {
@@ -248,6 +244,10 @@ class AIConfigService {
   }
 
   List<String> _getDefaultModels(bool isVision) {
-    return ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'];
+    return [
+      'gemini-2.0-flash',
+      'gemini-2.5-pro-preview-06-05',
+      'gemini-2.0-flash-lite',
+    ];
   }
 }

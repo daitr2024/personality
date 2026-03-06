@@ -217,8 +217,9 @@ class AudioAnalysisService {
           final jsonResult = jsonDecode(content);
           final List<AnalysisTask> tasks = (jsonResult['tasks'] as List? ?? [])
               .map((e) {
-                if (e is String)
+                if (e is String) {
                   return AnalysisTask.fromMap({'title': e}, originalText: text);
+                }
                 return AnalysisTask.fromMap(
                   e as Map<String, dynamic>,
                   originalText: text,

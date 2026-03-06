@@ -35,8 +35,6 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
   // Service will be accessed via provider in methods
 
   bool _isLoading = true;
-  bool _isLocal = false;
-  String? _lastAnalyzedText;
 
   // Mutable lists for suggested items
   final List<String> _suggestedTasks = [];
@@ -69,8 +67,6 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
   }
 
   Future<void> _startAnalysis(String? textToAnalyze) async {
-    _lastAnalyzedText = textToAnalyze;
-
     if (textToAnalyze == null || textToAnalyze.isEmpty) {
       setState(() {
         _isLoading = false;
@@ -93,9 +89,6 @@ class _AudioAnalysisDialogState extends ConsumerState<AudioAnalysisDialog> {
     );
     if (mounted) {
       if (result != null) {
-        setState(() {
-          _isLocal = result.isLocal;
-        });
         await _processAnalysisResult(result);
       } else {
         setState(() {
