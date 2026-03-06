@@ -884,4 +884,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String deleteConfirmFile(String name) {
     return 'هل تريد حذف \"$name\"?';
   }
+
+  @override
+  String get deleteConfirmTitle => 'هل أنت متأكد أنك تريد الحذف؟';
+
+  @override
+  String get deleteConfirmMessage => 'لا يمكن التراجع عن هذا الإجراء.';
+
+  @override
+  String get emptyTasksCta => 'أضف أول مهمة لك';
+
+  @override
+  String get emptyEventsCta => 'إنشاء حدث جديد';
+
+  @override
+  String get emptyNotesCta => 'اكتب ملاحظة';
 }

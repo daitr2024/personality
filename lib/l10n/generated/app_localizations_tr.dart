@@ -888,4 +888,19 @@ class AppLocalizationsTr extends AppLocalizations {
   String deleteConfirmFile(String name) {
     return '\"$name\" dosyasını silmek istiyor musunuz?';
   }
+
+  @override
+  String get deleteConfirmTitle => 'Silmek istediğinize emin misiniz?';
+
+  @override
+  String get deleteConfirmMessage => 'Bu işlem geri alınamaz.';
+
+  @override
+  String get emptyTasksCta => 'İlk görevinizi ekleyin';
+
+  @override
+  String get emptyEventsCta => 'Yeni etkinlik oluşturun';
+
+  @override
+  String get emptyNotesCta => 'Bir not yazın';
 }

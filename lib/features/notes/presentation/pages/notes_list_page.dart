@@ -138,6 +138,12 @@ class NotesListPage extends ConsumerWidget {
                       color: cs.onSurface.withValues(alpha: 0.45),
                     ),
                   ),
+                  const Gap(16),
+                  FilledButton.icon(
+                    onPressed: () => _showNoteDialog(context, ref),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: Text(AppLocalizations.of(context)!.emptyNotesCta),
+                  ),
                 ],
               ),
             );
@@ -172,9 +178,35 @@ class NotesListPage extends ConsumerWidget {
                         ),
                       ),
                       SlidableAction(
-                        onPressed: (context) => ref
-                            .read(notesRepositoryProvider)
-                            .deleteNote(note.id),
+                        onPressed: (ctx) async {
+                          final l10n = AppLocalizations.of(ctx)!;
+                          final confirmed = await showDialog<bool>(
+                            context: ctx,
+                            builder: (d) => AlertDialog(
+                              title: Text(l10n.deleteConfirmTitle),
+                              content: Text(l10n.deleteConfirmMessage),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(d, false),
+                                  child: Text(l10n.cancel),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(d, true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.urgentColor,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: Text(l10n.delete),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            ref
+                                .read(notesRepositoryProvider)
+                                .deleteNote(note.id);
+                          }
+                        },
                         backgroundColor: AppTheme.urgentColor.withValues(
                           alpha: 0.8,
                         ),

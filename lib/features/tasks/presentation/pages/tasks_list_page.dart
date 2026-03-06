@@ -146,6 +146,14 @@ class _TasksListPageState extends ConsumerState<TasksListPage> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
+                            const Gap(16),
+                            FilledButton.icon(
+                              onPressed: () => context.push('/tasks/new'),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: Text(
+                                AppLocalizations.of(context)!.emptyTasksCta,
+                              ),
+                            ),
                           ],
                         ),
                       )
@@ -282,7 +290,9 @@ class _TasksListPageState extends ConsumerState<TasksListPage> {
                                   const Gap(12),
                                   Expanded(
                                     child: Text(
-                                      'Arşiv Görevler',
+                                      AppLocalizations.of(
+                                        context,
+                                      )!.archiveTasks,
                                       style: TextStyle(
                                         color: Theme.of(
                                           context,

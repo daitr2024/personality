@@ -307,5 +307,10 @@
   "timeLabelFmt": "Time: {time}",
   "@timeLabelFmt": { "placeholders": { "time": { "type": "String" } } },
   "deleteConfirmFile": "Do you want to delete \"{name}\"?",
-  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } }
+  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } },
+  "deleteConfirmTitle": "Are you sure you want to delete?",
+  "deleteConfirmMessage": "This action cannot be undone.",
+  "emptyTasksCta": "Add your first task",
+  "emptyEventsCta": "Create a new event",
+  "emptyNotesCta": "Write a note"
 }

@@ -307,5 +307,10 @@
   "timeLabelFmt": "Saat: {time}",
   "@timeLabelFmt": { "placeholders": { "time": { "type": "String" } } },
   "deleteConfirmFile": "\"{name}\" dosyasını silmek istiyor musunuz?",
-  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } }
+  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } },
+  "deleteConfirmTitle": "Silmek istediğinize emin misiniz?",
+  "deleteConfirmMessage": "Bu işlem geri alınamaz.",
+  "emptyTasksCta": "İlk görevinizi ekleyin",
+  "emptyEventsCta": "Yeni etkinlik oluşturun",
+  "emptyNotesCta": "Bir not yazın"
 }

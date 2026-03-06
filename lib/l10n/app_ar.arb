@@ -307,5 +307,10 @@
   "timeLabelFmt": "الوقت: {time}",
   "@timeLabelFmt": { "placeholders": { "time": { "type": "String" } } },
   "deleteConfirmFile": "هل تريد حذف \"{name}\"?",
-  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } }
+  "@deleteConfirmFile": { "placeholders": { "name": { "type": "String" } } },
+  "deleteConfirmTitle": "هل أنت متأكد أنك تريد الحذف؟",
+  "deleteConfirmMessage": "لا يمكن التراجع عن هذا الإجراء.",
+  "emptyTasksCta": "أضف أول مهمة لك",
+  "emptyEventsCta": "إنشاء حدث جديد",
+  "emptyNotesCta": "اكتب ملاحظة"
 }

@@ -881,4 +881,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String deleteConfirmFile(String name) {
     return 'Do you want to delete \"$name\"?';
   }
+
+  @override
+  String get deleteConfirmTitle => 'Are you sure you want to delete?';
+
+  @override
+  String get deleteConfirmMessage => 'This action cannot be undone.';
+
+  @override
+  String get emptyTasksCta => 'Add your first task';
+
+  @override
+  String get emptyEventsCta => 'Create a new event';
+
+  @override
+  String get emptyNotesCta => 'Write a note';
 }

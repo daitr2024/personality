@@ -1689,6 +1689,36 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'\"{name}\" dosyasını silmek istiyor musunuz?'**
   String deleteConfirmFile(String name);
+
+  /// No description provided for @deleteConfirmTitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Silmek istediğinize emin misiniz?'**
+  String get deleteConfirmTitle;
+
+  /// No description provided for @deleteConfirmMessage.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu işlem geri alınamaz.'**
+  String get deleteConfirmMessage;
+
+  /// No description provided for @emptyTasksCta.
+  ///
+  /// In tr, this message translates to:
+  /// **'İlk görevinizi ekleyin'**
+  String get emptyTasksCta;
+
+  /// No description provided for @emptyEventsCta.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yeni etkinlik oluşturun'**
+  String get emptyEventsCta;
+
+  /// No description provided for @emptyNotesCta.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bir not yazın'**
+  String get emptyNotesCta;
 }
 
 class _AppLocalizationsDelegate
