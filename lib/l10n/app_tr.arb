@@ -312,5 +312,11 @@
   "deleteConfirmMessage": "Bu işlem geri alınamaz.",
   "emptyTasksCta": "İlk görevinizi ekleyin",
   "emptyEventsCta": "Yeni etkinlik oluşturun",
-  "emptyNotesCta": "Bir not yazın"
+  "emptyNotesCta": "Bir not yazın",
+
+  "contactUs": "Bize Ulaşın",
+  "contactUsSubtitle": "Soru, öneri veya geri bildirimleriniz için bize e-posta gönderin. En kısa sürede size dönüş yapacağız.",
+  "contactUsEmail": "daitr2024@gmail.com",
+  "sendEmail": "E-posta Gönder",
+  "feedbackAndSupport": "Geri Bildirim ve Destek"
 }

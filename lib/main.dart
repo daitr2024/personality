@@ -15,41 +15,50 @@ import 'config/theme/theme_provider.dart';
 import 'core/services/notification_service.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
-  final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-  tz.setLocalLocation(tz.getLocation(timeZoneName));
-  debugPrint('🕐 TIMEZONE INIT: $timeZoneName → tz.local=${tz.local}');
+void main() {
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      tz.initializeTimeZones();
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint('🕐 TIMEZONE INIT: $timeZoneName → tz.local=${tz.local}');
 
-  // Initialize notification service
-  final notificationService = NotificationService();
-  await notificationService.initialize();
-  await notificationService.requestPermissions();
+      // Initialize notification service
+      final notificationService = NotificationService();
+      await notificationService.initialize();
+      await notificationService.requestPermissions();
 
-  // Initialize Firebase (graceful — won't crash if google-services.json missing)
-  bool firebaseInitialized = false;
-  try {
-    await Firebase.initializeApp();
-    firebaseInitialized = true;
+      // Initialize Firebase (graceful — won't crash if google-services.json missing)
+      try {
+        await Firebase.initializeApp();
 
-    // Pass all uncaught Flutter errors to Crashlytics
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  } catch (e) {
-    debugPrint('⚠️ Firebase not initialized: $e');
-  }
+        // Enable Crashlytics collection (including debug mode)
+        await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+          true,
+        );
 
-  if (firebaseInitialized) {
-    // Catch async errors not caught by Flutter framework
-    runZonedGuarded(
-      () => runApp(const ProviderScope(child: PersonalityApp())),
-      (error, stack) {
+        // Pass all uncaught Flutter errors to Crashlytics
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+        debugPrint('✅ Firebase initialized, Crashlytics active');
+      } catch (e) {
+        debugPrint('⚠️ Firebase not initialized: $e');
+      }
+
+      runApp(const ProviderScope(child: PersonalityApp()));
+    },
+    (error, stack) {
+      // Forward async errors to Crashlytics if available
+      try {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      },
-    );
-  } else {
-    runApp(const ProviderScope(child: PersonalityApp()));
-  }
+      } catch (_) {
+        // Firebase not initialized — just print
+      }
+      debugPrint('🔴 Uncaught error: $error\n$stack');
+    },
+  );
 }
 
 class PersonalityApp extends ConsumerWidget {

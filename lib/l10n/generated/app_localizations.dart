@@ -1719,6 +1719,36 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Bir not yazın'**
   String get emptyNotesCta;
+
+  /// No description provided for @contactUs.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bize Ulaşın'**
+  String get contactUs;
+
+  /// No description provided for @contactUsSubtitle.
+  ///
+  /// In tr, this message translates to:
+  /// **'Soru, öneri veya geri bildirimleriniz için bize e-posta gönderin. En kısa sürede size dönüş yapacağız.'**
+  String get contactUsSubtitle;
+
+  /// No description provided for @contactUsEmail.
+  ///
+  /// In tr, this message translates to:
+  /// **'daitr2024@gmail.com'**
+  String get contactUsEmail;
+
+  /// No description provided for @sendEmail.
+  ///
+  /// In tr, this message translates to:
+  /// **'E-posta Gönder'**
+  String get sendEmail;
+
+  /// No description provided for @feedbackAndSupport.
+  ///
+  /// In tr, this message translates to:
+  /// **'Geri Bildirim ve Destek'**
+  String get feedbackAndSupport;
 }
 
 class _AppLocalizationsDelegate

@@ -48,6 +48,7 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
   Size? _displaySize;
   bool _isCropping = false;
   String? _savedImagePath;
+  bool _isSaving = false;
 
   // Selection tracking
   final Set<int> _selectedTaskIndices = {};
@@ -270,7 +271,9 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
   }
 
   Future<void> _saveSelectedItems() async {
-    if (_result == null) return;
+    if (_result == null || _isSaving) return;
+
+    setState(() => _isSaving = true);
 
     try {
       final service = ref.read(imageAnalysisServiceProvider);
@@ -319,13 +322,13 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
           selectedContacts,
           imagePath: _savedImagePath,
         );
+        debugPrint('SAVE: Contacts saved successfully');
       }
 
       // Invalidate providers to refresh Home and other screens
       ref.invalidate(taskListProvider);
       ref.invalidate(noteListProvider);
       ref.invalidate(calendarEventsProvider);
-      ref.invalidate(imageAnalysisServiceProvider);
 
       if (mounted) {
         final parts = <String>[];
@@ -337,6 +340,9 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
         }
         if (selectedEvents.isNotEmpty) {
           parts.add('${selectedEvents.length} etkinlik');
+        }
+        if (selectedContacts.isNotEmpty) {
+          parts.add('${selectedContacts.length} kişi');
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -355,15 +361,29 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
         );
         context.pop();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('SAVE ERROR: $e');
+      debugPrint('SAVE STACK: $stackTrace');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)!.saveError(e.toString()),
+        setState(() => _isSaving = false);
+        try {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.saveError(e.toString()),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
-          ),
-        );
+          );
+        } catch (snackError) {
+          debugPrint('SNACKBAR ERROR: $snackError');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Kaydetme hatası: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     }
   }
@@ -1967,7 +1987,9 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
             // Save button
             Expanded(
               child: ElevatedButton(
-                onPressed: _totalSelectedCount > 0
+                onPressed: _isSaving
+                    ? null
+                    : _totalSelectedCount > 0
                     ? _saveSelectedItems
                     : hasContactsOnly
                     ? () {
@@ -1988,21 +2010,27 @@ class _ImageScanPageState extends ConsumerState<ImageScanPage> {
                   ),
                   elevation: 0,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.save_rounded, size: 20),
-                    const Gap(8),
-                    Text(
-                      _totalSelectedCount > 0
-                          ? 'Seçilenleri Kaydet ($_totalSelectedCount)'
-                          : hasContactsOnly
-                          ? 'Kişileri Rehbere Kaydedin'
-                          : 'Öğe Seçin',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.save_rounded, size: 20),
+                          const Gap(8),
+                          Text(
+                            _totalSelectedCount > 0
+                                ? 'Seçilenleri Kaydet ($_totalSelectedCount)'
+                                : hasContactsOnly
+                                ? 'Kişileri Rehbere Kaydedin'
+                                : 'Öğe Seçin',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],

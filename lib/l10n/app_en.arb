@@ -312,5 +312,11 @@
   "deleteConfirmMessage": "This action cannot be undone.",
   "emptyTasksCta": "Add your first task",
   "emptyEventsCta": "Create a new event",
-  "emptyNotesCta": "Write a note"
+  "emptyNotesCta": "Write a note",
+
+  "contactUs": "Contact Us",
+  "contactUsSubtitle": "Send us an email for your questions, suggestions, or feedback. We will get back to you as soon as possible.",
+  "contactUsEmail": "daitr2024@gmail.com",
+  "sendEmail": "Send Email",
+  "feedbackAndSupport": "Feedback & Support"
 }

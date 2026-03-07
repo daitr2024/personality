@@ -899,4 +899,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get emptyNotesCta => 'اكتب ملاحظة';
+
+  @override
+  String get contactUs => 'اتصل بنا';
+
+  @override
+  String get contactUsSubtitle =>
+      'أرسل لنا بريداً إلكترونياً لأسئلتك أو اقتراحاتك أو ملاحظاتك. سنعود إليك في أقرب وقت ممكن.';
+
+  @override
+  String get contactUsEmail => 'daitr2024@gmail.com';
+
+  @override
+  String get sendEmail => 'إرسال بريد إلكتروني';
+
+  @override
+  String get feedbackAndSupport => 'الملاحظات والدعم';
 }

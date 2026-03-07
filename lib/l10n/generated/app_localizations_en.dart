@@ -896,4 +896,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get emptyNotesCta => 'Write a note';
+
+  @override
+  String get contactUs => 'Contact Us';
+
+  @override
+  String get contactUsSubtitle =>
+      'Send us an email for your questions, suggestions, or feedback. We will get back to you as soon as possible.';
+
+  @override
+  String get contactUsEmail => 'daitr2024@gmail.com';
+
+  @override
+  String get sendEmail => 'Send Email';
+
+  @override
+  String get feedbackAndSupport => 'Feedback & Support';
 }

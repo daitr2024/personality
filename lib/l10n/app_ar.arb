@@ -312,5 +312,11 @@
   "deleteConfirmMessage": "لا يمكن التراجع عن هذا الإجراء.",
   "emptyTasksCta": "أضف أول مهمة لك",
   "emptyEventsCta": "إنشاء حدث جديد",
-  "emptyNotesCta": "اكتب ملاحظة"
+  "emptyNotesCta": "اكتب ملاحظة",
+
+  "contactUs": "اتصل بنا",
+  "contactUsSubtitle": "أرسل لنا بريداً إلكترونياً لأسئلتك أو اقتراحاتك أو ملاحظاتك. سنعود إليك في أقرب وقت ممكن.",
+  "contactUsEmail": "daitr2024@gmail.com",
+  "sendEmail": "إرسال بريد إلكتروني",
+  "feedbackAndSupport": "الملاحظات والدعم"
 }

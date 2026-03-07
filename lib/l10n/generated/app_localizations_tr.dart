@@ -903,4 +903,20 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get emptyNotesCta => 'Bir not yazın';
+
+  @override
+  String get contactUs => 'Bize Ulaşın';
+
+  @override
+  String get contactUsSubtitle =>
+      'Soru, öneri veya geri bildirimleriniz için bize e-posta gönderin. En kısa sürede size dönüş yapacağız.';
+
+  @override
+  String get contactUsEmail => 'daitr2024@gmail.com';
+
+  @override
+  String get sendEmail => 'E-posta Gönder';
+
+  @override
+  String get feedbackAndSupport => 'Geri Bildirim ve Destek';
 }
