@@ -188,14 +188,31 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     });
 
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions'),
-      );
+      final configService = ref.read(aiConfigServiceProvider);
+      final userApiKey = await configService.getApiKey();
 
-      request.headers['Authorization'] =
-          'Bearer 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';
-      request.fields['model'] = 'whisper-large-v3';
+      // Require user-configured API key — no hardcoded fallback
+      if (userApiKey == null || userApiKey.isEmpty) {
+        widget.onRecordingComplete(path, null);
+        return;
+      }
+
+      final userEndpoint = await configService.getEndpoint();
+      String whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
+      String whisperKey = 'Bearer $userApiKey';
+
+      if (userEndpoint.contains('openai.com')) {
+        whisperUrl = 'https://api.openai.com/v1/audio/transcriptions';
+      } else if (userEndpoint.contains('groq.com')) {
+        whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
+      }
+
+      final request = http.MultipartRequest('POST', Uri.parse(whisperUrl));
+
+      request.headers['Authorization'] = whisperKey;
+      request.fields['model'] = whisperUrl.contains('openai.com')
+          ? 'whisper-1'
+          : 'whisper-large-v3';
       request.fields['language'] = 'tr'; // Turkish
 
       request.files.add(await http.MultipartFile.fromPath('file', path));

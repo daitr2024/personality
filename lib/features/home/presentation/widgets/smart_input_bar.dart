@@ -167,20 +167,29 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
 
       // If user has a custom endpoint (like Groq or OpenAI), use it for transcription too
       String whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-      String whisperKey =
-          'Bearer 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';
+      String whisperKey = '';
 
-      if (userApiKey != null && userApiKey.isNotEmpty) {
-        if (userEndpoint.contains('openai.com')) {
-          whisperUrl = 'https://api.openai.com/v1/audio/transcriptions';
-          whisperKey = 'Bearer $userApiKey';
-        } else if (userEndpoint.contains('groq.com')) {
-          whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-          whisperKey = 'Bearer $userApiKey';
+      // Require user-configured API key — no hardcoded fallback
+      if (userApiKey == null || userApiKey.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.apiKeyNotSet),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
-        // If it's a generic OpenAI-compatible endpoint, we try to append the standard path
-        // but for now let's stick to known providers for reliability
+        return;
       }
+
+      whisperKey = 'Bearer $userApiKey';
+      if (userEndpoint.contains('openai.com')) {
+        whisperUrl = 'https://api.openai.com/v1/audio/transcriptions';
+      } else if (userEndpoint.contains('groq.com')) {
+        whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
+      }
+      // If it's a generic OpenAI-compatible endpoint, we try to append the standard path
+      // but for now let's stick to known providers for reliability
 
       final request = http.MultipartRequest('POST', Uri.parse(whisperUrl));
       request.headers['Authorization'] = whisperKey;
