@@ -130,7 +130,7 @@ class HomeWidgetService {
       // Trigger widget update
       await HomeWidget.updateWidget(
         androidName: 'HomeWidgetProvider',
-        qualifiedAndroidName: 'com.example.personality_ai.HomeWidgetProvider',
+        qualifiedAndroidName: 'com.daitr2024.personalityai.HomeWidgetProvider',
       );
     } catch (e) {
       debugPrint('HomeWidgetService: Error updating widget: $e');

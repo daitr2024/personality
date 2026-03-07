@@ -1,4 +1,4 @@
-package com.example.personality_ai
+package com.daitr2024.personalityai
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

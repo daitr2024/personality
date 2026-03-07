@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 final quickAccessServiceProvider = Provider((ref) => QuickAccessService());
 
 class QuickAccessService {
-  static const platform = MethodChannel('com.example.personality_ai/quick_actions');
+  static const platform = MethodChannel(
+    'com.daitr2024.personalityai/quick_actions',
+  );
 
   Future<String?> checkPendingAction() async {
     try {

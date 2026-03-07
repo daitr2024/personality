@@ -1,4 +1,4 @@
-package com.example.personality_ai
+package com.daitr2024.personalityai
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,7 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.personality_ai/quick_actions"
+    private val CHANNEL = "com.daitr2024.personalityai/quick_actions"
     private var pendingAction: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {

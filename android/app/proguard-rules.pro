@@ -13,8 +13,8 @@
 -dontwarn com.dexterous.**
 
 # Home Widget
--keep class com.example.personality_ai.HomeWidgetProvider { *; }
--keep class com.example.personality_ai.** { *; }
+-keep class com.daitr2024.personalityai.HomeWidgetProvider { *; }
+-keep class com.daitr2024.personalityai.** { *; }
 -keep class es.antonborri.home_widget.** { *; }
 -dontwarn es.antonborri.home_widget.**
 
