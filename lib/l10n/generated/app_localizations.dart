@@ -493,20 +493,50 @@ abstract class AppLocalizations {
   /// No description provided for @categoryMarket.
   ///
   /// In tr, this message translates to:
-  /// **'Market'**
+  /// **'Market / Yeme-İçme'**
   String get categoryMarket;
 
-  /// No description provided for @categoryRent.
+  /// No description provided for @categoryHousing.
   ///
   /// In tr, this message translates to:
-  /// **'Kira'**
-  String get categoryRent;
+  /// **'Kira / Faturalar'**
+  String get categoryHousing;
 
-  /// No description provided for @categoryBill.
+  /// No description provided for @categoryTransport.
   ///
   /// In tr, this message translates to:
-  /// **'Fatura'**
-  String get categoryBill;
+  /// **'Ulaşım'**
+  String get categoryTransport;
+
+  /// No description provided for @categoryHealth.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sağlık'**
+  String get categoryHealth;
+
+  /// No description provided for @categoryPersonal.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kişisel Harcama'**
+  String get categoryPersonal;
+
+  /// No description provided for @categoryTech.
+  ///
+  /// In tr, this message translates to:
+  /// **'Abonelik / Teknoloji'**
+  String get categoryTech;
+
+  /// No description provided for @categoryDonation.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bağış'**
+  String get categoryDonation;
+
+  /// No description provided for @categoryOther.
+  ///
+  /// In tr, this message translates to:
+  /// **'Diğer'**
+  String get categoryOther;
 
   /// No description provided for @categorySalary.
   ///
@@ -514,11 +544,17 @@ abstract class AppLocalizations {
   /// **'Maaş'**
   String get categorySalary;
 
-  /// No description provided for @categoryOther.
+  /// No description provided for @categoryInvestment.
   ///
   /// In tr, this message translates to:
-  /// **'Diğer'**
-  String get categoryOther;
+  /// **'Yatırım / Kira Geliri'**
+  String get categoryInvestment;
+
+  /// No description provided for @categoryOtherIncome.
+  ///
+  /// In tr, this message translates to:
+  /// **'Diğer Gelir'**
+  String get categoryOtherIncome;
 
   /// No description provided for @incomeAddition.
   ///
@@ -1749,6 +1785,180 @@ abstract class AppLocalizations {
   /// In tr, this message translates to:
   /// **'Geri Bildirim ve Destek'**
   String get feedbackAndSupport;
+
+  /// No description provided for @returnToToday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bugüne dön'**
+  String get returnToToday;
+
+  /// No description provided for @fixedIncomeExpense.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sabit Gelir / Gider'**
+  String get fixedIncomeExpense;
+
+  /// No description provided for @addLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Ekle'**
+  String get addLabel;
+
+  /// No description provided for @recurrenceWeekly.
+  ///
+  /// In tr, this message translates to:
+  /// **'Haftalık'**
+  String get recurrenceWeekly;
+
+  /// No description provided for @recurrenceMonthly.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aylık'**
+  String get recurrenceMonthly;
+
+  /// No description provided for @recurrenceYearly.
+  ///
+  /// In tr, this message translates to:
+  /// **'Yıllık'**
+  String get recurrenceYearly;
+
+  /// No description provided for @dayToday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bugün'**
+  String get dayToday;
+
+  /// No description provided for @dayYesterday.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dün'**
+  String get dayYesterday;
+
+  /// No description provided for @installmentPayment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Taksitli Ödeme'**
+  String get installmentPayment;
+
+  /// No description provided for @installmentDesc.
+  ///
+  /// In tr, this message translates to:
+  /// **'Toplam tutarı aylara bölün'**
+  String get installmentDesc;
+
+  /// No description provided for @installmentCount.
+  ///
+  /// In tr, this message translates to:
+  /// **'Taksit Sayısı'**
+  String get installmentCount;
+
+  /// No description provided for @transactionSaved.
+  ///
+  /// In tr, this message translates to:
+  /// **'İşlem kaydedildi'**
+  String get transactionSaved;
+
+  /// No description provided for @totalAmount.
+  ///
+  /// In tr, this message translates to:
+  /// **'Toplam Tutar'**
+  String get totalAmount;
+
+  /// No description provided for @monthlyInstallment.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aylık Taksit'**
+  String get monthlyInstallment;
+
+  /// No description provided for @endDate.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bitiş Tarihi'**
+  String get endDate;
+
+  /// No description provided for @installmentPreviewHint.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tutarı girdikten sonra taksit dağılımını göreceksiniz'**
+  String get installmentPreviewHint;
+
+  /// No description provided for @createInstallments.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} Taksit Oluştur'**
+  String createInstallments(int count);
+
+  /// No description provided for @installmentsCreated.
+  ///
+  /// In tr, this message translates to:
+  /// **'{count} taksit oluşturuldu ({amount}/ay)'**
+  String installmentsCreated(int count, String amount);
+
+  /// No description provided for @noTransactionsForMonth.
+  ///
+  /// In tr, this message translates to:
+  /// **'{month} için işlem bulunamadı'**
+  String noTransactionsForMonth(String month);
+
+  /// No description provided for @dateLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tarih'**
+  String get dateLabel;
+
+  /// No description provided for @noteLabel.
+  ///
+  /// In tr, this message translates to:
+  /// **'Not'**
+  String get noteLabel;
+
+  /// No description provided for @noteHintTransaction.
+  ///
+  /// In tr, this message translates to:
+  /// **'İşlem hakkında not ekleyin (opsiyonel)'**
+  String get noteHintTransaction;
+
+  /// No description provided for @categoryAnalysis.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kategori Dağılımı'**
+  String get categoryAnalysis;
+
+  /// No description provided for @monthlyComparison.
+  ///
+  /// In tr, this message translates to:
+  /// **'Aylık Karşılaştırma'**
+  String get monthlyComparison;
+
+  /// No description provided for @searchTransactions.
+  ///
+  /// In tr, this message translates to:
+  /// **'İşlem Ara...'**
+  String get searchTransactions;
+
+  /// No description provided for @filterByCategory.
+  ///
+  /// In tr, this message translates to:
+  /// **'Kategoriye Göre Filtrele'**
+  String get filterByCategory;
+
+  /// No description provided for @allCategories.
+  ///
+  /// In tr, this message translates to:
+  /// **'Tüm Kategoriler'**
+  String get allCategories;
+
+  /// No description provided for @noResultsFound.
+  ///
+  /// In tr, this message translates to:
+  /// **'Sonuç bulunamadı'**
+  String get noResultsFound;
+
+  /// No description provided for @installmentTotalTooltip.
+  ///
+  /// In tr, this message translates to:
+  /// **'Taksit toplam tutarını giriniz'**
+  String get installmentTotalTooltip;
 }
 
 class _AppLocalizationsDelegate

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../../../../core/database/app_database.dart';
 import '../providers/finance_providers.dart';
+import '../utils/currency_input_formatter.dart';
 import '../../../home/presentation/widgets/home_header.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/presentation/providers/currency_provider.dart';
@@ -19,9 +20,7 @@ class FinanceSummaryPage extends ConsumerWidget {
     final transactionsAsync = ref.watch(transactionListProvider);
     final monthlyIncome = ref.watch(monthlyIncomeTotalProvider);
     final monthlyExpense = ref.watch(monthlyExpenseTotalProvider);
-    final balance = ref.watch(balanceProvider);
     final selectedMonth = ref.watch(selectedMonthProvider);
-    final groupedTx = ref.watch(groupedTransactionsProvider);
 
     final localeCode = Localizations.localeOf(context).toString();
     final currencySymbol = ref.watch(currencySymbolProvider);
@@ -43,24 +42,26 @@ class FinanceSummaryPage extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   const Gap(8),
-                  // ── Month Navigator ──
+                  // -- Month Navigator --
                   _buildMonthNavigator(context, ref, selectedMonth),
                   const Gap(16),
 
-                  // ── Balance Card ──
-                  _buildBalanceCard(
+                  // -- Income vs Expense Balance Bar --
+                  _buildBalanceBar(
                     context,
-                    ref,
-                    balance,
                     monthlyIncome,
                     monthlyExpense,
+                    cs,
                     currencyFormat,
-                    selectedMonth,
                   ),
-                  const Gap(20),
+                  const Gap(16),
 
                   // ── Recurring Section ──
                   _buildRecurringSection(context, ref, currencyFormat, cs),
+
+                  // ── Search & Filter ──
+                  _buildSearchFilterBar(context, ref, cs),
+                  const Gap(8),
 
                   // ── Transactions by Date ──
                   transactionsAsync.when(
@@ -68,13 +69,48 @@ class FinanceSummaryPage extends ConsumerWidget {
                       final nonRecurring = transactions
                           .where((t) => !t.isRecurring)
                           .toList();
-                      if (nonRecurring.isEmpty) {
+
+                      // Apply search and category filter
+                      final searchQuery = ref
+                          .watch(searchQueryProvider)
+                          .toLowerCase();
+                      final selectedCategory = ref.watch(
+                        selectedCategoryFilterProvider,
+                      );
+
+                      final filtered = nonRecurring.where((t) {
+                        final matchesSearch =
+                            searchQuery.isEmpty ||
+                            t.title.toLowerCase().contains(searchQuery) ||
+                            (t.note ?? '').toLowerCase().contains(searchQuery);
+                        final matchesCategory =
+                            selectedCategory == null ||
+                            t.category == selectedCategory;
+                        return matchesSearch && matchesCategory;
+                      }).toList();
+
+                      if (filtered.isEmpty) {
+                        if (searchQuery.isNotEmpty ||
+                            selectedCategory != null) {
+                          return _buildNoResultsState(context, cs);
+                        }
                         return _buildEmptyState(context, selectedMonth);
                       }
+
+                      // Re-group filtered transactions
+                      final Map<String, List<TransactionEntity>>
+                      filteredGrouped = {};
+                      for (final t in filtered) {
+                        final key =
+                            '${t.date.year}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
+                        filteredGrouped.putIfAbsent(key, () => []);
+                        filteredGrouped[key]!.add(t);
+                      }
+
                       return _buildGroupedTransactions(
                         context,
                         ref,
-                        groupedTx,
+                        filteredGrouped,
                         currencyFormat,
                       );
                     },
@@ -113,7 +149,8 @@ class FinanceSummaryPage extends ConsumerWidget {
     DateTime selected,
   ) {
     final cs = Theme.of(context).colorScheme;
-    final monthLabel = DateFormat('MMMM yyyy', 'tr').format(selected);
+    final localeCode = Localizations.localeOf(context).toString();
+    final monthLabel = DateFormat('MMMM yyyy', localeCode).format(selected);
     final isCurrentMonth =
         selected.year == DateTime.now().year &&
         selected.month == DateTime.now().month;
@@ -154,7 +191,7 @@ class FinanceSummaryPage extends ConsumerWidget {
               if (!isCurrentMonth) ...[
                 const Gap(2),
                 Text(
-                  'Bugüne dön',
+                  AppLocalizations.of(context)!.returnToToday,
                   style: TextStyle(
                     fontSize: 11,
                     color: cs.primary,
@@ -189,180 +226,6 @@ class FinanceSummaryPage extends ConsumerWidget {
     );
   }
 
-  // ─── Balance Card ──────────────────────────────────────────────
-
-  Widget _buildBalanceCard(
-    BuildContext context,
-    WidgetRef ref,
-    double totalBalance,
-    double monthlyIncome,
-    double monthlyExpense,
-    NumberFormat format,
-    DateTime selectedMonth,
-  ) {
-    final cs = Theme.of(context).colorScheme;
-    final monthlyBalance = monthlyIncome - monthlyExpense;
-    final monthLabel = DateFormat('MMMM', 'tr').format(selectedMonth);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Total balance
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.totalBalance,
-                    style: TextStyle(
-                      color: cs.onPrimary.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const Gap(4),
-                  Text(
-                    format.format(totalBalance),
-                    style: TextStyle(
-                      color: cs.onPrimary,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              // Monthly net indicator
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.onPrimary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      monthLabel,
-                      style: TextStyle(
-                        color: cs.onPrimary.withValues(alpha: 0.7),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Gap(2),
-                    Text(
-                      '${monthlyBalance >= 0 ? '+' : ''}${format.format(monthlyBalance)}',
-                      style: TextStyle(
-                        color: monthlyBalance >= 0
-                            ? AppTheme.incomeColor
-                            : AppTheme.expenseColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const Gap(20),
-          // Income / Expense row
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => _showAddIncomeDialog(context, ref),
-                  child: _buildMiniStat(
-                    context,
-                    Icons.arrow_upward_rounded,
-                    AppLocalizations.of(context)!.income,
-                    format.format(monthlyIncome),
-                    AppTheme.incomeColor,
-                  ),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 36,
-                color: cs.onPrimary.withValues(alpha: 0.15),
-              ),
-              Expanded(
-                child: _buildMiniStat(
-                  context,
-                  Icons.arrow_downward_rounded,
-                  AppLocalizations.of(context)!.expense,
-                  format.format(monthlyExpense),
-                  AppTheme.expenseColor,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniStat(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 16),
-          const Gap(6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: cs.onPrimary.withValues(alpha: 0.6),
-                    fontSize: 11,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: cs.onPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── Recurring Section ─────────────────────────────────────────
 
   Widget _buildRecurringSection(
@@ -389,7 +252,7 @@ class FinanceSummaryPage extends ConsumerWidget {
                 ),
                 const Gap(8),
                 Text(
-                  'Sabit Gelir / Gider',
+                  AppLocalizations.of(context)!.fixedIncomeExpense,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -501,7 +364,7 @@ class FinanceSummaryPage extends ConsumerWidget {
             ),
             const Gap(2),
             Text(
-              'Ekle',
+              AppLocalizations.of(context)!.addLabel,
               style: TextStyle(
                 fontSize: 10,
                 color: cs.onSurface.withValues(alpha: 0.4),
@@ -516,11 +379,11 @@ class FinanceSummaryPage extends ConsumerWidget {
   String _getRecurrenceLabel(String type) {
     switch (type) {
       case 'weekly':
-        return 'Haftalık';
+        return 'Weekly';
       case 'yearly':
-        return 'Yıllık';
+        return 'Yearly';
       default:
-        return 'Aylık';
+        return 'Monthly';
     }
   }
 
@@ -540,7 +403,7 @@ class FinanceSummaryPage extends ConsumerWidget {
       children: sortedKeys.map((dateKey) {
         final dayTransactions = grouped[dateKey]!;
         final date = DateTime.parse(dateKey);
-        final dayLabel = _formatDayLabel(date);
+        final dayLabel = _formatDayLabel(context, date);
         final dayTotal = dayTransactions.fold<double>(
           0,
           (sum, t) => sum + (t.isExpense ? -t.amount : t.amount),
@@ -586,22 +449,375 @@ class FinanceSummaryPage extends ConsumerWidget {
     );
   }
 
-  String _formatDayLabel(DateTime date) {
+  String _formatDayLabel(BuildContext context, DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final d = DateTime(date.year, date.month, date.day);
 
-    if (d == today) return 'Bugün';
-    if (d == yesterday) return 'Dün';
-    return DateFormat('d MMMM EEEE', 'tr').format(date);
+    if (d == today) return AppLocalizations.of(context)!.dayToday;
+    if (d == yesterday) return AppLocalizations.of(context)!.dayYesterday;
+    final localeCode = Localizations.localeOf(context).toString();
+    return DateFormat('d MMMM EEEE', localeCode).format(date);
+  }
+
+  Widget _buildBalanceBar(
+    BuildContext context,
+    double income,
+    double expense,
+    ColorScheme cs,
+    NumberFormat currencyFormat,
+  ) {
+    final total = income + expense;
+    if (total == 0) return const SizedBox.shrink();
+
+    final incomeRatio = income / total;
+    final expenseRatio = expense / total;
+    final isHealthy = income >= expense;
+    final l10n = AppLocalizations.of(context)!;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title row
+          Row(
+            children: [
+              Icon(
+                isHealthy ? Icons.thumb_up_rounded : Icons.warning_rounded,
+                size: 18,
+                color: isHealthy ? AppTheme.incomeColor : AppTheme.expenseColor,
+              ),
+              const Gap(8),
+              Text(
+                isHealthy ? l10n.income : l10n.expense,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isHealthy
+                      ? AppTheme.incomeColor
+                      : AppTheme.expenseColor,
+                ),
+              ),
+              Text(
+                isHealthy ? ' > ' : ' > ',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: cs.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+              Text(
+                isHealthy ? l10n.expense : l10n.income,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isHealthy
+                      ? AppTheme.expenseColor
+                      : AppTheme.incomeColor,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                isHealthy ? Icons.check_circle_rounded : Icons.error_rounded,
+                size: 16,
+                color: isHealthy ? AppTheme.incomeColor : AppTheme.expenseColor,
+              ),
+            ],
+          ),
+          const Gap(12),
+
+          // Horizontal balance bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 20,
+              child: Row(
+                children: [
+                  // Income portion (green)
+                  Expanded(
+                    flex: (incomeRatio * 1000).round().clamp(1, 999),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.incomeColor.withValues(alpha: 0.7),
+                            AppTheme.incomeColor,
+                          ],
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: incomeRatio > 0.15
+                          ? Text(
+                              '${(incomeRatio * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  // Expense portion (red)
+                  Expanded(
+                    flex: (expenseRatio * 1000).round().clamp(1, 999),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.expenseColor,
+                            AppTheme.expenseColor.withValues(alpha: 0.7),
+                          ],
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: expenseRatio > 0.15
+                          ? Text(
+                              '${(expenseRatio * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Gap(10),
+
+          // Legend row
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppTheme.incomeColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const Gap(4),
+              Text(
+                currencyFormat.format(income),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.incomeColor,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppTheme.expenseColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const Gap(4),
+              Text(
+                currencyFormat.format(expense),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.expenseColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Search & Filter Bar ─────────────────────────────────────────
+
+  Widget _buildSearchFilterBar(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme cs,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final searchQuery = ref.watch(searchQueryProvider);
+    final selectedCategory = ref.watch(selectedCategoryFilterProvider);
+
+    // Collect unique categories from current transactions
+    final transactions = ref.watch(transactionListProvider).value ?? [];
+    final categories =
+        transactions
+            .where((t) => !t.isRecurring)
+            .map((t) => t.category)
+            .toSet()
+            .toList()
+          ..sort();
+
+    return Column(
+      children: [
+        // Search Field
+        TextField(
+          decoration: InputDecoration(
+            hintText: l10n.searchTransactions,
+            hintStyle: TextStyle(
+              color: cs.onSurface.withValues(alpha: 0.3),
+              fontSize: 13,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              size: 20,
+              color: cs.onSurface.withValues(alpha: 0.3),
+            ),
+            suffixIcon: searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear_rounded,
+                      size: 18,
+                      color: cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                    onPressed: () {
+                      ref.read(searchQueryProvider.notifier).clear();
+                    },
+                  )
+                : null,
+            filled: true,
+            fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          onChanged: (value) {
+            ref.read(searchQueryProvider.notifier).setQuery(value);
+          },
+        ),
+        const Gap(8),
+        // Category Filter Chips
+        if (categories.isNotEmpty)
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // "All" chip
+                _buildFilterChip(
+                  label: l10n.allCategories,
+                  isSelected: selectedCategory == null,
+                  onTap: () {
+                    ref.read(selectedCategoryFilterProvider.notifier).clear();
+                  },
+                  cs: cs,
+                ),
+                const Gap(6),
+                // Category chips
+                ...categories.map(
+                  (cat) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: _buildFilterChip(
+                      label: cat,
+                      isSelected: selectedCategory == cat,
+                      onTap: () {
+                        ref
+                            .read(selectedCategoryFilterProvider.notifier)
+                            .setCategory(cat);
+                      },
+                      cs: cs,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required ColorScheme cs,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? cs.primary.withValues(alpha: 0.15)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? cs.primary.withValues(alpha: 0.4)
+                : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected
+                ? cs.primary
+                : cs.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── No Results State (for search/filter) ────────────────────────
+
+  Widget _buildNoResultsState(BuildContext context, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 42,
+            color: cs.onSurface.withValues(alpha: 0.2),
+          ),
+          const Gap(12),
+          Text(
+            l10n.noResultsFound,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: cs.onSurface.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ─── Empty State ───────────────────────────────────────────────
 
   Widget _buildEmptyState(BuildContext context, DateTime selectedMonth) {
     final cs = Theme.of(context).colorScheme;
-    final monthLabel = DateFormat('MMMM yyyy', 'tr').format(selectedMonth);
+    final monthLabel = DateFormat(
+      'MMMM yyyy',
+      Localizations.localeOf(context).toString(),
+    ).format(selectedMonth);
 
     return Container(
       padding: const EdgeInsets.all(40),
@@ -618,7 +834,7 @@ class FinanceSummaryPage extends ConsumerWidget {
           ),
           const Gap(12),
           Text(
-            '$monthLabel için işlem bulunamadı',
+            AppLocalizations.of(context)!.noTransactionsForMonth(monthLabel),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -787,37 +1003,52 @@ class FinanceSummaryPage extends ConsumerWidget {
 
   IconData _getCategoryIcon(String category, bool isExpense) {
     final lower = category.toLowerCase();
-    if (lower.contains('market') || lower.contains('alışveriş')) {
+    // Market / Yeme-İçme (Shopping & Food)
+    if (lower.contains('market') ||
+        lower.contains('shopping') ||
+        lower.contains('yeme') ||
+        lower.contains('food')) {
       return Icons.shopping_cart_rounded;
     }
-    if (lower.contains('kira') || lower.contains('rent')) {
+    // Konut / Faturalar (Housing & Bills)
+    if (lower.contains('konut') ||
+        lower.contains('housing') ||
+        lower.contains('fatura') ||
+        lower.contains('bill')) {
       return Icons.home_rounded;
     }
-    if (lower.contains('fatura') || lower.contains('bill')) {
-      return Icons.receipt_long_rounded;
-    }
-    if (lower.contains('maaş') ||
-        lower.contains('salary') ||
-        lower.contains('income')) {
-      return Icons.account_balance_rounded;
-    }
-    if (lower.contains('ulaşım') || lower.contains('transport')) {
+    // Ulaşım (Transport)
+    if (lower.contains('transport') || lower.contains('ula')) {
       return Icons.directions_car_rounded;
     }
-    if (lower.contains('yemek') || lower.contains('food')) {
-      return Icons.restaurant_rounded;
-    }
-    if (lower.contains('sağlık') || lower.contains('health')) {
+    // Sağlık (Health)
+    if (lower.contains('health') || lower.contains('sa')) {
       return Icons.medical_services_rounded;
     }
-    if (lower.contains('eğitim') || lower.contains('education')) {
-      return Icons.school_rounded;
+    // Kişisel (Personal)
+    if (lower.contains('personal') || lower.contains('ki')) {
+      return Icons.person_rounded;
     }
-    if (lower.contains('eğlence') || lower.contains('entertainment')) {
-      return Icons.movie_rounded;
+    // Abonelik / Teknoloji (Subscription & Tech)
+    if (lower.contains('abonelik') ||
+        lower.contains('subscription') ||
+        lower.contains('tech') ||
+        lower.contains('teknoloji')) {
+      return Icons.devices_rounded;
     }
-    if (lower.contains('abonelik') || lower.contains('subscription')) {
-      return Icons.subscriptions_rounded;
+    // Bağış (Donation)
+    if (lower.contains('donation')) {
+      return Icons.volunteer_activism_rounded;
+    }
+    // Maaş (Salary)
+    if (lower.contains('maa') || lower.contains('salary')) {
+      return Icons.account_balance_rounded;
+    }
+    // Yatırım / Kira Geliri (Investment & Rental)
+    if (lower.contains('yat') ||
+        lower.contains('invest') ||
+        lower.contains('rental')) {
+      return Icons.trending_up_rounded;
     }
     if (!isExpense) {
       return Icons.arrow_upward_rounded;
@@ -968,14 +1199,35 @@ class FinanceSummaryPage extends ConsumerWidget {
               const Gap(12),
               TextField(
                 controller: amountController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  CurrencyInputFormatter(
+                    locale: Localizations.localeOf(context).toString(),
+                  ),
+                ],
                 decoration: InputDecoration(
                   labelText: 'Tutar',
                   suffixText: currencySymbol,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  prefixIcon: const Icon(Icons.attach_money_rounded, size: 20),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 4),
+                    child: Text(
+                      currencySymbol,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 0,
+                  ),
                 ),
               ),
               const Gap(16),
@@ -997,8 +1249,9 @@ class FinanceSummaryPage extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               final title = titleController.text.trim();
-              final amount = double.tryParse(
-                amountController.text.replaceAll(',', '.'),
+              final amount = parseCurrencyInput(
+                amountController.text,
+                Localizations.localeOf(context).toString(),
               );
               if (title.isNotEmpty && amount != null && amount > 0) {
                 ref
@@ -1454,16 +1707,34 @@ class FinanceSummaryPage extends ConsumerWidget {
                 const Gap(12),
                 TextField(
                   controller: amountController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    CurrencyInputFormatter(
+                      locale: Localizations.localeOf(context).toString(),
+                    ),
+                  ],
                   decoration: InputDecoration(
                     labelText: 'Tutar',
                     suffixText: currencySymbol,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    prefixIcon: const Icon(
-                      Icons.attach_money_rounded,
-                      size: 20,
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 12, right: 4),
+                      child: Text(
+                        currencySymbol,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 0,
                     ),
                   ),
                 ),
@@ -1497,8 +1768,9 @@ class FinanceSummaryPage extends ConsumerWidget {
             ElevatedButton(
               onPressed: () {
                 final title = titleController.text.trim();
-                final amount = double.tryParse(
-                  amountController.text.replaceAll(',', '.'),
+                final amount = parseCurrencyInput(
+                  amountController.text,
+                  Localizations.localeOf(context).toString(),
                 );
                 if (title.isNotEmpty && amount != null && amount > 0) {
                   ref
@@ -1617,103 +1889,6 @@ class FinanceSummaryPage extends ConsumerWidget {
               ),
             ),
             child: Text(AppLocalizations.of(context)!.delete),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── Quick Add Income Dialog (from summary card) ───────────────
-
-  void _showAddIncomeDialog(BuildContext context, WidgetRef ref) {
-    final titleController = TextEditingController();
-    final amountController = TextEditingController();
-    final currencySymbol = ref.read(currencySymbolProvider);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(AppLocalizations.of(context)!.addIncome),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  labelText: 'Açıklama',
-                  hintText: 'ör: Maaş, Freelance',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.text_fields_rounded, size: 20),
-                ),
-              ),
-              const Gap(12),
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(
-                    context,
-                  )!.amountWithCurrency(currencySymbol),
-                  suffixText: currencySymbol,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.attach_money_rounded, size: 20),
-                ),
-                autofocus: true,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              final amount = double.tryParse(
-                amountController.text.replaceAll(',', '.'),
-              );
-              if (amount != null && amount > 0) {
-                ref
-                    .read(financeRepositoryProvider)
-                    .addTransaction(
-                      title.isNotEmpty
-                          ? title
-                          : AppLocalizations.of(context)!.incomeAddition,
-                      amount,
-                      'Income',
-                      DateTime.now(),
-                      false,
-                    );
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(AppLocalizations.of(context)!.incomeAdded),
-                    backgroundColor: AppTheme.completedColor,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: Text(AppLocalizations.of(context)!.add),
           ),
         ],
       ),

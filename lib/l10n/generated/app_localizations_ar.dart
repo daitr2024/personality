@@ -218,16 +218,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get categoryMarket => 'سوق';
 
   @override
-  String get categoryRent => 'إيجار';
+  String get categoryHousing => 'Kira / Faturalar';
 
   @override
-  String get categoryBill => 'فاتورة';
+  String get categoryTransport => 'Ulaşım';
+
+  @override
+  String get categoryHealth => 'Sağlık';
+
+  @override
+  String get categoryPersonal => 'Kişisel Harcama';
+
+  @override
+  String get categoryTech => 'Abonelik / Teknoloji';
+
+  @override
+  String get categoryDonation => 'Bağış';
+
+  @override
+  String get categoryOther => 'آخر';
 
   @override
   String get categorySalary => 'راتب';
 
   @override
-  String get categoryOther => 'آخر';
+  String get categoryInvestment => 'Yatırım / Kira Geliri';
+
+  @override
+  String get categoryOtherIncome => 'Diğer Gelir';
 
   @override
   String get incomeAddition => 'إضافة دخل';
@@ -915,4 +933,98 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get feedbackAndSupport => 'الملاحظات والدعم';
+
+  @override
+  String get returnToToday => 'Bugüne dön';
+
+  @override
+  String get fixedIncomeExpense => 'Sabit Gelir / Gider';
+
+  @override
+  String get addLabel => 'Ekle';
+
+  @override
+  String get recurrenceWeekly => 'Haftalık';
+
+  @override
+  String get recurrenceMonthly => 'Aylık';
+
+  @override
+  String get recurrenceYearly => 'Yıllık';
+
+  @override
+  String get dayToday => 'Bugün';
+
+  @override
+  String get dayYesterday => 'Dün';
+
+  @override
+  String get installmentPayment => 'Taksitli Ödeme';
+
+  @override
+  String get installmentDesc => 'Toplam tutarı aylara bölün';
+
+  @override
+  String get installmentCount => 'Taksit Sayısı';
+
+  @override
+  String get transactionSaved => 'İşlem kaydedildi';
+
+  @override
+  String get totalAmount => 'Toplam Tutar';
+
+  @override
+  String get monthlyInstallment => 'Aylık Taksit';
+
+  @override
+  String get endDate => 'Bitiş Tarihi';
+
+  @override
+  String get installmentPreviewHint =>
+      'Tutarı girdikten sonra taksit dağılımını göreceksiniz';
+
+  @override
+  String createInstallments(int count) {
+    return '$count Taksit Oluştur';
+  }
+
+  @override
+  String installmentsCreated(int count, String amount) {
+    return '$count taksit oluşturuldu ($amount/ay)';
+  }
+
+  @override
+  String noTransactionsForMonth(String month) {
+    return '$month için işlem bulunamadı';
+  }
+
+  @override
+  String get dateLabel => 'Tarih';
+
+  @override
+  String get noteLabel => 'Not';
+
+  @override
+  String get noteHintTransaction => 'İşlem hakkında not ekleyin (opsiyonel)';
+
+  @override
+  String get categoryAnalysis => 'Kategori Dağılımı';
+
+  @override
+  String get monthlyComparison => 'Aylık Karşılaştırma';
+
+  @override
+  String get searchTransactions => 'İşlem Ara...';
+
+  @override
+  String get filterByCategory => 'Kategoriye Göre Filtrele';
+
+  @override
+  String get allCategories => 'Tüm Kategoriler';
+
+  @override
+  String get noResultsFound => 'Sonuç bulunamadı';
+
+  @override
+  String get installmentTotalTooltip => 'Taksit toplam tutarını giriniz';
 }

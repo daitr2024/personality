@@ -23,6 +23,8 @@ class Transactions extends Table {
       integer().nullable()(); // Current installment (e.g. 1 of 6)
   TextColumn get installmentGroupId =>
       text().nullable()(); // Group ID to link installments together
+  // Note / memo
+  TextColumn get note => text().nullable()();
   // Recurring transaction support
   BoolColumn get isRecurring => boolean().withDefault(const Constant(false))();
   TextColumn get recurrenceType =>
@@ -170,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
       const DriftDatabaseOptions(storeDateTimeAsText: false);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration {
@@ -400,6 +402,14 @@ class AppDatabase extends _$AppDatabase {
                 // ignore: column might not exist yet
               }
             }
+          }
+        }
+        if (from < 16) {
+          // Add note column to transactions
+          try {
+            await m.addColumn(transactions, transactions.note);
+          } catch (e) {
+            // ignore: empty_catches
           }
         }
       },

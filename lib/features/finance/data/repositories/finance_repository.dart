@@ -56,6 +56,7 @@ class FinanceRepository {
     String? installmentGroupId,
     bool isRecurring = false,
     String? recurrenceType,
+    String? note,
   }) async {
     await _db
         .into(_db.transactions)
@@ -72,6 +73,7 @@ class FinanceRepository {
             installmentGroupId: Value(installmentGroupId),
             isRecurring: Value(isRecurring),
             recurrenceType: Value(recurrenceType),
+            note: Value(note),
           ),
         );
   }
@@ -202,5 +204,84 @@ class FinanceRepository {
     }
 
     return result;
+  }
+
+  /// Auto-generate recurring transaction instances for current period
+  /// Called on app startup to ensure all recurring templates have instances
+  Future<int> generateRecurringInstances() async {
+    int created = 0;
+    final now = DateTime.now();
+
+    // Get all recurring templates
+    final templates = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.isRecurring.equals(true))).get();
+
+    for (final template in templates) {
+      final recType = template.recurrenceType ?? 'monthly';
+      final templateDate = template.date;
+
+      // Calculate next instance dates from template date until now
+      DateTime nextDate = _getNextOccurrence(templateDate, recType);
+
+      // Generate up to 12 future periods max (safety limit)
+      int safetyCounter = 0;
+      while (!nextDate.isAfter(now) && safetyCounter < 12) {
+        // Check if this instance already exists
+        final existing =
+            await (_db.select(_db.transactions)..where(
+                  (t) =>
+                      t.title.equals(template.title) &
+                      t.isRecurring.equals(false) &
+                      t.date.isBiggerOrEqualValue(
+                        DateTime(nextDate.year, nextDate.month, nextDate.day),
+                      ) &
+                      t.date.isSmallerThanValue(
+                        DateTime(
+                          nextDate.year,
+                          nextDate.month,
+                          nextDate.day + 1,
+                        ),
+                      ),
+                ))
+                .get();
+
+        if (existing.isEmpty) {
+          // Create instance
+          await _db
+              .into(_db.transactions)
+              .insert(
+                TransactionsCompanion.insert(
+                  title: template.title,
+                  amount: template.amount,
+                  category: template.category,
+                  date: nextDate,
+                  isExpense: Value(template.isExpense),
+                  isRecurring: const Value(false),
+                  note: Value(template.note),
+                ),
+              );
+          created++;
+        }
+
+        nextDate = _getNextOccurrence(nextDate, recType);
+        safetyCounter++;
+      }
+    }
+
+    return created;
+  }
+
+  /// Calculate the next occurrence date based on recurrence type
+  DateTime _getNextOccurrence(DateTime from, String recurrenceType) {
+    switch (recurrenceType) {
+      case 'weekly':
+        return from.add(const Duration(days: 7));
+      case 'yearly':
+        return DateTime(from.year + 1, from.month, from.day);
+      case 'monthly':
+      default:
+        return DateTime(from.year, from.month + 1, from.day);
+    }
   }
 }

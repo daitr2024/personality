@@ -118,6 +118,15 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isRecurringMeta = const VerificationMeta(
     'isRecurring',
   );
@@ -156,6 +165,7 @@ class $TransactionsTable extends Transactions
     installmentCount,
     installmentCurrent,
     installmentGroupId,
+    note,
     isRecurring,
     recurrenceType,
   ];
@@ -248,6 +258,12 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     if (data.containsKey('is_recurring')) {
       context.handle(
         _isRecurringMeta,
@@ -315,6 +331,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}installment_group_id'],
       ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       isRecurring: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_recurring'],
@@ -344,6 +364,7 @@ class TransactionEntity extends DataClass
   final int? installmentCount;
   final int? installmentCurrent;
   final String? installmentGroupId;
+  final String? note;
   final bool isRecurring;
   final String? recurrenceType;
   const TransactionEntity({
@@ -357,6 +378,7 @@ class TransactionEntity extends DataClass
     this.installmentCount,
     this.installmentCurrent,
     this.installmentGroupId,
+    this.note,
     required this.isRecurring,
     this.recurrenceType,
   });
@@ -380,6 +402,9 @@ class TransactionEntity extends DataClass
     }
     if (!nullToAbsent || installmentGroupId != null) {
       map['installment_group_id'] = Variable<String>(installmentGroupId);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
     }
     map['is_recurring'] = Variable<bool>(isRecurring);
     if (!nullToAbsent || recurrenceType != null) {
@@ -408,6 +433,7 @@ class TransactionEntity extends DataClass
       installmentGroupId: installmentGroupId == null && nullToAbsent
           ? const Value.absent()
           : Value(installmentGroupId),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       isRecurring: Value(isRecurring),
       recurrenceType: recurrenceType == null && nullToAbsent
           ? const Value.absent()
@@ -433,6 +459,7 @@ class TransactionEntity extends DataClass
       installmentGroupId: serializer.fromJson<String?>(
         json['installmentGroupId'],
       ),
+      note: serializer.fromJson<String?>(json['note']),
       isRecurring: serializer.fromJson<bool>(json['isRecurring']),
       recurrenceType: serializer.fromJson<String?>(json['recurrenceType']),
     );
@@ -451,6 +478,7 @@ class TransactionEntity extends DataClass
       'installmentCount': serializer.toJson<int?>(installmentCount),
       'installmentCurrent': serializer.toJson<int?>(installmentCurrent),
       'installmentGroupId': serializer.toJson<String?>(installmentGroupId),
+      'note': serializer.toJson<String?>(note),
       'isRecurring': serializer.toJson<bool>(isRecurring),
       'recurrenceType': serializer.toJson<String?>(recurrenceType),
     };
@@ -467,6 +495,7 @@ class TransactionEntity extends DataClass
     Value<int?> installmentCount = const Value.absent(),
     Value<int?> installmentCurrent = const Value.absent(),
     Value<String?> installmentGroupId = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     bool? isRecurring,
     Value<String?> recurrenceType = const Value.absent(),
   }) => TransactionEntity(
@@ -488,6 +517,7 @@ class TransactionEntity extends DataClass
     installmentGroupId: installmentGroupId.present
         ? installmentGroupId.value
         : this.installmentGroupId,
+    note: note.present ? note.value : this.note,
     isRecurring: isRecurring ?? this.isRecurring,
     recurrenceType: recurrenceType.present
         ? recurrenceType.value
@@ -513,6 +543,7 @@ class TransactionEntity extends DataClass
       installmentGroupId: data.installmentGroupId.present
           ? data.installmentGroupId.value
           : this.installmentGroupId,
+      note: data.note.present ? data.note.value : this.note,
       isRecurring: data.isRecurring.present
           ? data.isRecurring.value
           : this.isRecurring,
@@ -535,6 +566,7 @@ class TransactionEntity extends DataClass
           ..write('installmentCount: $installmentCount, ')
           ..write('installmentCurrent: $installmentCurrent, ')
           ..write('installmentGroupId: $installmentGroupId, ')
+          ..write('note: $note, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurrenceType: $recurrenceType')
           ..write(')'))
@@ -553,6 +585,7 @@ class TransactionEntity extends DataClass
     installmentCount,
     installmentCurrent,
     installmentGroupId,
+    note,
     isRecurring,
     recurrenceType,
   );
@@ -570,6 +603,7 @@ class TransactionEntity extends DataClass
           other.installmentCount == this.installmentCount &&
           other.installmentCurrent == this.installmentCurrent &&
           other.installmentGroupId == this.installmentGroupId &&
+          other.note == this.note &&
           other.isRecurring == this.isRecurring &&
           other.recurrenceType == this.recurrenceType);
 }
@@ -585,6 +619,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
   final Value<int?> installmentCount;
   final Value<int?> installmentCurrent;
   final Value<String?> installmentGroupId;
+  final Value<String?> note;
   final Value<bool> isRecurring;
   final Value<String?> recurrenceType;
   const TransactionsCompanion({
@@ -598,6 +633,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
     this.installmentCount = const Value.absent(),
     this.installmentCurrent = const Value.absent(),
     this.installmentGroupId = const Value.absent(),
+    this.note = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurrenceType = const Value.absent(),
   });
@@ -612,6 +648,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
     this.installmentCount = const Value.absent(),
     this.installmentCurrent = const Value.absent(),
     this.installmentGroupId = const Value.absent(),
+    this.note = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurrenceType = const Value.absent(),
   }) : title = Value(title),
@@ -629,6 +666,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
     Expression<int>? installmentCount,
     Expression<int>? installmentCurrent,
     Expression<String>? installmentGroupId,
+    Expression<String>? note,
     Expression<bool>? isRecurring,
     Expression<String>? recurrenceType,
   }) {
@@ -644,6 +682,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
       if (installmentCurrent != null) 'installment_current': installmentCurrent,
       if (installmentGroupId != null)
         'installment_group_id': installmentGroupId,
+      if (note != null) 'note': note,
       if (isRecurring != null) 'is_recurring': isRecurring,
       if (recurrenceType != null) 'recurrence_type': recurrenceType,
     });
@@ -660,6 +699,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
     Value<int?>? installmentCount,
     Value<int?>? installmentCurrent,
     Value<String?>? installmentGroupId,
+    Value<String?>? note,
     Value<bool>? isRecurring,
     Value<String?>? recurrenceType,
   }) {
@@ -674,6 +714,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
       installmentCount: installmentCount ?? this.installmentCount,
       installmentCurrent: installmentCurrent ?? this.installmentCurrent,
       installmentGroupId: installmentGroupId ?? this.installmentGroupId,
+      note: note ?? this.note,
       isRecurring: isRecurring ?? this.isRecurring,
       recurrenceType: recurrenceType ?? this.recurrenceType,
     );
@@ -712,6 +753,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
     if (installmentGroupId.present) {
       map['installment_group_id'] = Variable<String>(installmentGroupId.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (isRecurring.present) {
       map['is_recurring'] = Variable<bool>(isRecurring.value);
     }
@@ -734,6 +778,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionEntity> {
           ..write('installmentCount: $installmentCount, ')
           ..write('installmentCurrent: $installmentCurrent, ')
           ..write('installmentGroupId: $installmentGroupId, ')
+          ..write('note: $note, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurrenceType: $recurrenceType')
           ..write(')'))
@@ -4754,6 +4799,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<int?> installmentCount,
       Value<int?> installmentCurrent,
       Value<String?> installmentGroupId,
+      Value<String?> note,
       Value<bool> isRecurring,
       Value<String?> recurrenceType,
     });
@@ -4769,6 +4815,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<int?> installmentCount,
       Value<int?> installmentCurrent,
       Value<String?> installmentGroupId,
+      Value<String?> note,
       Value<bool> isRecurring,
       Value<String?> recurrenceType,
     });
@@ -4856,6 +4903,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get installmentGroupId => $composableBuilder(
     column: $table.installmentGroupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4954,6 +5006,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isRecurring => $composableBuilder(
     column: $table.isRecurring,
     builder: (column) => ColumnOrderings(column),
@@ -5011,6 +5068,9 @@ class $$TransactionsTableAnnotationComposer
     column: $table.installmentGroupId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<bool> get isRecurring => $composableBuilder(
     column: $table.isRecurring,
@@ -5086,6 +5146,7 @@ class $$TransactionsTableTableManager
                 Value<int?> installmentCount = const Value.absent(),
                 Value<int?> installmentCurrent = const Value.absent(),
                 Value<String?> installmentGroupId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<bool> isRecurring = const Value.absent(),
                 Value<String?> recurrenceType = const Value.absent(),
               }) => TransactionsCompanion(
@@ -5099,6 +5160,7 @@ class $$TransactionsTableTableManager
                 installmentCount: installmentCount,
                 installmentCurrent: installmentCurrent,
                 installmentGroupId: installmentGroupId,
+                note: note,
                 isRecurring: isRecurring,
                 recurrenceType: recurrenceType,
               ),
@@ -5114,6 +5176,7 @@ class $$TransactionsTableTableManager
                 Value<int?> installmentCount = const Value.absent(),
                 Value<int?> installmentCurrent = const Value.absent(),
                 Value<String?> installmentGroupId = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<bool> isRecurring = const Value.absent(),
                 Value<String?> recurrenceType = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -5127,6 +5190,7 @@ class $$TransactionsTableTableManager
                 installmentCount: installmentCount,
                 installmentCurrent: installmentCurrent,
                 installmentGroupId: installmentGroupId,
+                note: note,
                 isRecurring: isRecurring,
                 recurrenceType: recurrenceType,
               ),

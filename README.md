@@ -59,7 +59,7 @@ The app is designed with a **privacy-first** approach: all data is stored locall
 - **Receipt Scanning** — Point your camera at a receipt and the AI auto-extracts amount, description, and category
 - **Installment Tracking** — Track purchases with installment plans
 - **Recurring Transactions** — Automatic recurring income/expense entries
-- Balance overview with visual charts (powered by fl_chart)
+- Balance overview with income vs expense visualization
 
 ### 📸 Image Scanning & OCR
 - **ML Kit Text Recognition** — On-device OCR for extracting text from images

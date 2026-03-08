@@ -1,5 +1,4 @@
 import java.util.Properties
-import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
@@ -10,10 +9,11 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
-val keystoreProperties = Properties()
-val keystoreFile = rootProject.file("key.properties")
-if (keystoreFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystoreFile))
+val keystoreProperties = Properties().apply {
+    val keystoreFile = rootProject.file("key.properties")
+    if (keystoreFile.exists()) {
+        keystoreFile.inputStream().use { load(it) }
+    }
 }
 
 android {

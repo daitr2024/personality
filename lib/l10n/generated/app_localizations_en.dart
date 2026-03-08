@@ -214,19 +214,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get category => 'Category';
 
   @override
-  String get categoryMarket => 'Market';
+  String get categoryMarket => 'Shopping & Food';
 
   @override
-  String get categoryRent => 'Rent';
+  String get categoryHousing => 'Rent & Bills';
 
   @override
-  String get categoryBill => 'Bill';
+  String get categoryTransport => 'Transport';
+
+  @override
+  String get categoryHealth => 'Health';
+
+  @override
+  String get categoryPersonal => 'Personal';
+
+  @override
+  String get categoryTech => 'Subscription & Tech';
+
+  @override
+  String get categoryDonation => 'Donation';
+
+  @override
+  String get categoryOther => 'Other';
 
   @override
   String get categorySalary => 'Salary';
 
   @override
-  String get categoryOther => 'Other';
+  String get categoryInvestment => 'Investment & Rental';
+
+  @override
+  String get categoryOtherIncome => 'Other Income';
 
   @override
   String get incomeAddition => 'Income Addition';
@@ -912,4 +930,99 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get feedbackAndSupport => 'Feedback & Support';
+
+  @override
+  String get returnToToday => 'Return to today';
+
+  @override
+  String get fixedIncomeExpense => 'Fixed Income / Expense';
+
+  @override
+  String get addLabel => 'Add';
+
+  @override
+  String get recurrenceWeekly => 'Weekly';
+
+  @override
+  String get recurrenceMonthly => 'Monthly';
+
+  @override
+  String get recurrenceYearly => 'Yearly';
+
+  @override
+  String get dayToday => 'Today';
+
+  @override
+  String get dayYesterday => 'Yesterday';
+
+  @override
+  String get installmentPayment => 'Installment Payment';
+
+  @override
+  String get installmentDesc => 'Split total amount over months';
+
+  @override
+  String get installmentCount => 'Number of Installments';
+
+  @override
+  String get transactionSaved => 'Transaction saved';
+
+  @override
+  String get totalAmount => 'Total Amount';
+
+  @override
+  String get monthlyInstallment => 'Monthly Installment';
+
+  @override
+  String get endDate => 'End Date';
+
+  @override
+  String get installmentPreviewHint =>
+      'Enter amount to see installment breakdown';
+
+  @override
+  String createInstallments(int count) {
+    return 'Create $count Installments';
+  }
+
+  @override
+  String installmentsCreated(int count, String amount) {
+    return '$count installments created ($amount/mo)';
+  }
+
+  @override
+  String noTransactionsForMonth(String month) {
+    return 'No transactions for $month';
+  }
+
+  @override
+  String get dateLabel => 'Date';
+
+  @override
+  String get noteLabel => 'Note';
+
+  @override
+  String get noteHintTransaction =>
+      'Add a note about this transaction (optional)';
+
+  @override
+  String get categoryAnalysis => 'Category Breakdown';
+
+  @override
+  String get monthlyComparison => 'Monthly Comparison';
+
+  @override
+  String get searchTransactions => 'Search transactions...';
+
+  @override
+  String get filterByCategory => 'Filter by Category';
+
+  @override
+  String get allCategories => 'All Categories';
+
+  @override
+  String get noResultsFound => 'No results found';
+
+  @override
+  String get installmentTotalTooltip => 'Enter the total installment amount';
 }

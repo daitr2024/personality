@@ -118,3 +118,36 @@ final groupedTransactionsProvider = Provider<Map<String, List<TransactionEntity>
 
   return grouped;
 });
+
+/// Search query for filtering transactions
+final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
+  SearchQueryNotifier.new,
+);
+
+class SearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+  void setQuery(String query) => state = query;
+  void clear() => state = '';
+}
+
+/// Selected category for filtering transactions (null = all)
+final selectedCategoryFilterProvider =
+    NotifierProvider<CategoryFilterNotifier, String?>(
+      CategoryFilterNotifier.new,
+    );
+
+class CategoryFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void setCategory(String? category) => state = category;
+  void clear() => state = null;
+}
+
+/// Monthly totals for chart (last 6 months)
+final monthlyTotalsProvider = FutureProvider<Map<String, Map<String, double>>>((
+  ref,
+) {
+  final repository = ref.watch(financeRepositoryProvider);
+  return repository.getMonthlyTotals(6);
+});

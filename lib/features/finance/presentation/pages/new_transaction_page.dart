@@ -1,5 +1,4 @@
 // ignore_for_file: use_build_context_synchronously
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
@@ -8,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../config/theme/app_theme.dart';
 import '../providers/finance_providers.dart';
+import '../utils/currency_input_formatter.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../settings/presentation/providers/currency_provider.dart';
 
@@ -21,8 +21,10 @@ class NewTransactionPage extends ConsumerStatefulWidget {
 class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
+  final _amountFocusNode = FocusNode();
+  final _amountKey = GlobalKey();
   bool _isExpense = true;
-  String _selectedCategory = 'Diğer';
+  String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
 
   // Installment
@@ -32,20 +34,97 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   // Scanning State
   bool _isScanning = false;
   String? _receiptImagePath;
+  OverlayEntry? _tooltipOverlay;
 
-  List<String> get _categories => [
+
+  /// Expense categories (8)
+  List<String> get _expenseCategories => [
     AppLocalizations.of(context)!.categoryMarket,
-    AppLocalizations.of(context)!.categoryRent,
-    AppLocalizations.of(context)!.categoryBill,
-    AppLocalizations.of(context)!.categorySalary,
+    AppLocalizations.of(context)!.categoryHousing,
+    AppLocalizations.of(context)!.categoryTransport,
+    AppLocalizations.of(context)!.categoryHealth,
+    AppLocalizations.of(context)!.categoryPersonal,
+    AppLocalizations.of(context)!.categoryTech,
+    AppLocalizations.of(context)!.categoryDonation,
     AppLocalizations.of(context)!.categoryOther,
   ];
+
+  /// Income categories (3)
+  List<String> get _incomeCategories => [
+    AppLocalizations.of(context)!.categorySalary,
+    AppLocalizations.of(context)!.categoryInvestment,
+    AppLocalizations.of(context)!.categoryOtherIncome,
+  ];
+
+
+  List<String> get _categories =>
+      _isExpense ? _expenseCategories : _incomeCategories;
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
+    _amountFocusNode.dispose();
+    _tooltipOverlay?.remove();
     super.dispose();
+  }
+
+  void _showAmountTooltip() {
+    _tooltipOverlay?.remove();
+    final l10n = AppLocalizations.of(context)!;
+    final renderBox =
+        _amountKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final cs = Theme.of(context).colorScheme;
+
+    _tooltipOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx + 16,
+        top: offset.dy - 40,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 250),
+            builder: (context, value, child) => Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(0, (1 - value) * 6),
+                child: child,
+              ),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: cs.inverseSurface,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                l10n.installmentTotalTooltip,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: cs.onInverseSurface,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_tooltipOverlay!);
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      _tooltipOverlay?.remove();
+      _tooltipOverlay = null;
+    });
   }
 
   Future<void> _scanReceipt() async {
@@ -81,9 +160,22 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
           if (result.description.isNotEmpty) {
             _titleController.text = result.description;
           }
-          setState(() {
-            _selectedCategory = result.category;
-          });
+          // Auto-set date from receipt if detected
+          if (result.receiptDate != null) {
+            setState(() {
+              _selectedDate = result.receiptDate!;
+            });
+          }
+          // Auto-set category from receipt
+          if (result.category.isNotEmpty) {
+            final matchedCategory = _categories.firstWhere(
+              (c) => c.toLowerCase() == result.category.toLowerCase(),
+              orElse: () => _categories.last,
+            );
+            setState(() {
+              _selectedCategory = matchedCategory;
+            });
+          }
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -106,26 +198,29 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   }
 
   void _saveTransaction() {
+    final l10n = AppLocalizations.of(context)!;
     final title = _titleController.text.trim();
-    final amount = double.tryParse(_amountController.text.replaceAll(',', '.'));
+    final amount = parseCurrencyInput(_amountController.text, Localizations.localeOf(context).toString());
+    final note = '';
 
     if (title.isEmpty || amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.pleaseEnterValidValues),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.pleaseEnterValidValues)));
       return;
     }
 
     final repo = ref.read(financeRepositoryProvider);
+    final effectiveCategory = _selectedCategory.isEmpty
+        ? _categories.first
+        : _selectedCategory;
 
     if (_isInstallment && _isExpense && _installmentCount > 1) {
       // Create installment transactions
       repo.addInstallmentTransaction(
         title: title,
         totalAmount: amount,
-        category: _selectedCategory,
+        category: effectiveCategory,
         startDate: _selectedDate,
         installmentCount: _installmentCount,
         receiptImagePath: _receiptImagePath,
@@ -136,7 +231,10 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '$_installmentCount taksit oluşturuldu (${perInstallment.toStringAsFixed(2)} $symbol/ay)',
+            l10n.installmentsCreated(
+              _installmentCount,
+              '${perInstallment.toStringAsFixed(2)} $symbol',
+            ),
           ),
           backgroundColor: AppTheme.completedColor,
           behavior: SnackBarBehavior.floating,
@@ -150,15 +248,16 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
       repo.addTransaction(
         title,
         amount,
-        _selectedCategory,
+        effectiveCategory,
         _selectedDate,
         _isExpense,
         receiptImagePath: _receiptImagePath,
+        note: note.isNotEmpty ? note : null,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('İşlem kaydedildi'),
+          content: Text(l10n.transactionSaved),
           backgroundColor: AppTheme.completedColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -177,7 +276,7 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      locale: const Locale('tr'),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -187,309 +286,604 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final dateStr = DateFormat('dd MMM yyyy', 'tr').format(_selectedDate);
+    final l10n = AppLocalizations.of(context)!;
+    final localeCode = Localizations.localeOf(context).toString();
+    final dateStr = DateFormat('dd MMM yyyy', localeCode).format(_selectedDate);
+
+    // Ensure selected category is valid for current type
+    if (!_categories.contains(_selectedCategory)) {
+      _selectedCategory = _categories.first;
+    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.addNewTransaction),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Type Toggle ──
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTypeButton(
-                    label: AppLocalizations.of(context)!.expense,
-                    isSelected: _isExpense,
-                    color: AppTheme.expenseColor,
-                    icon: Icons.arrow_downward_rounded,
-                    onTap: () => setState(() => _isExpense = true),
-                  ),
-                ),
-                const Gap(12),
-                Expanded(
-                  child: _buildTypeButton(
-                    label: AppLocalizations.of(context)!.income,
-                    isSelected: !_isExpense,
-                    color: AppTheme.incomeColor,
-                    icon: Icons.arrow_upward_rounded,
-                    onTap: () => setState(() {
-                      _isExpense = false;
-                      _isInstallment = false;
-                    }),
-                  ),
-                ),
-              ],
-            ),
-            const Gap(20),
 
-            // ── Receipt Scan ──
-            if (_isExpense) ...[
-              GestureDetector(
-                onTap: _scanReceipt,
-                child: Container(
-                  width: double.infinity,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                    image: _receiptImagePath != null
-                        ? DecorationImage(
-                            image: FileImage(File(_receiptImagePath!)),
-                            fit: BoxFit.cover,
-                            opacity: 0.4,
-                          )
-                        : null,
-                  ),
-                  child: _isScanning
-                      ? const Center(child: CircularProgressIndicator())
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _receiptImagePath != null
-                                  ? Icons.check_circle_rounded
-                                  : Icons.camera_alt_rounded,
-                              color: _receiptImagePath != null
-                                  ? AppTheme.completedColor
-                                  : cs.onSurface.withValues(alpha: 0.4),
-                              size: 28,
-                            ),
-                            const Gap(6),
-                            Text(
-                              _receiptImagePath != null
-                                  ? AppLocalizations.of(context)!.receiptAdded
-                                  : AppLocalizations.of(context)!.scanReceipt,
-                              style: TextStyle(
-                                color: _receiptImagePath != null
-                                    ? AppTheme.completedColor
-                                    : cs.onSurface.withValues(alpha: 0.5),
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
+      appBar: AppBar(title: Text(l10n.addNewTransaction)),
+
+      body: Column(
+
+        children: [
+
+          Expanded(
+
+            child: SingleChildScrollView(
+
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+              child: Column(
+
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+
+                  // -- Type Toggle --
+
+                  Row(
+
+                    children: [
+
+                      Expanded(
+
+                        child: _buildTypeButton(
+
+                          label: l10n.expense,
+
+                          isSelected: _isExpense,
+
+                          color: AppTheme.expenseColor,
+
+                          icon: Icons.arrow_downward_rounded,
+
+                          onTap: () => setState(() => _isExpense = true),
+
                         ),
-                ),
-              ),
-              const Gap(20),
-            ],
 
-            // ── Description ──
-            TextField(
-              controller: _titleController,
-              maxLength: 40,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.description,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                prefixIcon: const Icon(Icons.text_fields_rounded, size: 20),
-                helperText: AppLocalizations.of(context)!.descriptionHint,
-              ),
-            ),
-            const Gap(12),
+                      ),
 
-            // ── Amount ──
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.amount,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                prefixIcon: const Icon(Icons.attach_money_rounded, size: 20),
-                suffixText: ref.watch(currencySymbolProvider),
-              ),
-            ),
-            const Gap(12),
+                      const Gap(8),
 
-            // ── Category ──
-            DropdownButtonFormField<String>(
-              initialValue: _categories.contains(_selectedCategory)
-                  ? _selectedCategory
-                  : _categories.last,
-              items: _categories
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (val) =>
-                  setState(() => _selectedCategory = val ?? _selectedCategory),
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.category,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                prefixIcon: const Icon(Icons.category_rounded, size: 20),
-              ),
-            ),
-            const Gap(12),
+                      Expanded(
 
-            // ── Date Picker ──
-            InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: cs.outline.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 20,
-                      color: cs.onSurface.withValues(alpha: 0.6),
-                    ),
-                    const Gap(12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tarih',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: cs.onSurface.withValues(alpha: 0.5),
+                        child: _buildTypeButton(
+
+                          label: l10n.income,
+
+                          isSelected: !_isExpense,
+
+                          color: AppTheme.incomeColor,
+
+                          icon: Icons.arrow_upward_rounded,
+
+                          onTap: () => setState(() {
+
+                            _isExpense = false;
+
+                            _isInstallment = false;
+
+                          }),
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
+
+                  const Gap(12),
+
+
+
+                  // -- Receipt Scan (compact inline) --
+
+                  if (_isExpense)
+
+                    Padding(
+
+                      padding: const EdgeInsets.only(bottom: 12),
+
+                      child: GestureDetector(
+
+                        onTap: _scanReceipt,
+
+                        child: Container(
+
+                          width: double.infinity,
+
+                          height: 52,
+
+                          decoration: BoxDecoration(
+
+                            color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+
+                            borderRadius: BorderRadius.circular(12),
+
+                            border: Border.all(
+
+                              color: _receiptImagePath != null
+
+                                  ? AppTheme.completedColor.withValues(alpha: 0.5)
+
+                                  : cs.outlineVariant.withValues(alpha: 0.3),
+
                             ),
+
                           ),
-                          Text(
-                            dateStr,
-                            style: TextStyle(fontSize: 15, color: cs.onSurface),
+
+                          child: _isScanning
+
+                              ? const Center(
+
+                                  child: SizedBox(
+
+                                    width: 20, height: 20,
+
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+
+                                  ),
+
+                                )
+
+                              : Row(
+
+                                  mainAxisAlignment: MainAxisAlignment.center,
+
+                                  children: [
+
+                                    Icon(
+
+                                      _receiptImagePath != null
+
+                                          ? Icons.check_circle_rounded
+
+                                          : Icons.camera_alt_rounded,
+
+                                      color: _receiptImagePath != null
+
+                                          ? AppTheme.completedColor
+
+                                          : cs.onSurface.withValues(alpha: 0.4),
+
+                                      size: 20,
+
+                                    ),
+
+                                    const Gap(8),
+
+                                    Text(
+
+                                      _receiptImagePath != null
+
+                                          ? l10n.receiptAdded
+
+                                          : l10n.scanReceipt,
+
+                                      style: TextStyle(
+
+                                        color: _receiptImagePath != null
+
+                                            ? AppTheme.completedColor
+
+                                            : cs.onSurface.withValues(alpha: 0.5),
+
+                                        fontWeight: FontWeight.w500,
+
+                                        fontSize: 13,
+
+                                      ),
+
+                                    ),
+
+                                  ],
+
+                                ),
+
+                        ),
+
+                      ),
+
+                    ),
+
+
+
+                  // -- Description --
+
+                  TextField(
+
+                    controller: _titleController,
+
+                    maxLength: 40,
+                    maxLines: 2,
+
+                    style: const TextStyle(fontSize: 14),
+
+                    decoration: InputDecoration(
+
+                      labelText: l10n.description,
+
+                      isDense: true,
+
+                      border: OutlineInputBorder(
+
+                        borderRadius: BorderRadius.circular(12),
+
+                      ),
+
+                      prefixIcon: const Icon(Icons.text_fields_rounded, size: 18),
+
+                      helperText: l10n.descriptionHint,
+
+                      helperStyle: const TextStyle(fontSize: 10),
+
+                      counterText: '',
+
+                    ),
+
+                  ),
+
+                  const Gap(8),
+
+
+
+                  // -- Amount + Category (side by side) --
+
+                  Row(
+
+                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                    children: [
+
+                      Expanded(
+
+                        flex: 5,
+
+                        child: TextField(
+
+                          key: _amountKey,
+
+                          controller: _amountController,
+
+                          focusNode: _amountFocusNode,
+
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [CurrencyInputFormatter(locale: Localizations.localeOf(context).toString())],
+                          style: const TextStyle(fontSize: 14),
+
+                          decoration: InputDecoration(
+
+                            labelText: l10n.amount,
+
+                            isDense: true,
+
+                            border: OutlineInputBorder(
+
+                              borderRadius: BorderRadius.circular(12),
+
+                            ),
+
+                            prefixIcon: Padding(
+
+                              padding: const EdgeInsets.only(left: 10, right: 2),
+
+                              child: Text(
+
+                                ref.watch(currencySymbolProvider),
+
+                                style: TextStyle(
+
+                                  fontSize: 16,
+
+                                  fontWeight: FontWeight.w600,
+
+                                  color: cs.onSurface.withValues(alpha: 0.5),
+
+                                ),
+
+                              ),
+
+                            ),
+
+                            prefixIconConstraints: const BoxConstraints(
+
+                              minWidth: 32, minHeight: 0,
+
+                            ),
+
+                            suffixText: ref.watch(currencySymbolProvider),
+
+                            suffixStyle: const TextStyle(fontSize: 12),
+
                           ),
+
+                        ),
+
+                      ),
+
+                      const Gap(8),
+
+                      Expanded(
+
+                        flex: 6,
+
+                        // ignore: deprecated_member_use
+
+                        child: DropdownButtonFormField<String>(
+
+                          initialValue: _categories.contains(_selectedCategory)
+
+                              ? _selectedCategory
+
+                              : _categories.first,
+
+                          items: _categories
+
+                              .map((c) => DropdownMenuItem(
+
+                                    value: c,
+
+                                    child: Text(c, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+
+                                  ))
+
+                              .toList(),
+                          onChanged: (val) => setState(() => _selectedCategory = val ?? _selectedCategory),
+
+                          decoration: InputDecoration(
+
+                            labelText: l10n.category,
+
+                            isDense: true,
+
+                            border: OutlineInputBorder(
+
+                              borderRadius: BorderRadius.circular(12),
+
+                            ),
+
+                          ),
+
+                          isExpanded: true,
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ),
+
+                  const Gap(8),
+
+
+
+                  // -- Date Picker --
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: cs.outline.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 16, color: cs.onSurface.withValues(alpha: 0.5)),
+                          const Gap(8),
+                          Text(dateStr, style: TextStyle(fontSize: 13, color: cs.onSurface)),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: cs.onSurface.withValues(alpha: 0.3),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const Gap(20),
-
-            // ── Installment Toggle ──
-            if (_isExpense) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: _isInstallment
-                      ? AppTheme.eventColor.withValues(alpha: 0.06)
-                      : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: _isInstallment
-                        ? AppTheme.eventColor.withValues(alpha: 0.3)
-                        : cs.outlineVariant.withValues(alpha: 0.2),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.credit_card_rounded,
+                  const Gap(10),
+
+
+
+                  // -- Installment Toggle (expenses only) --
+
+                  if (_isExpense)
+
+                    Container(
+
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+                      decoration: BoxDecoration(
+
+                        color: _isInstallment
+
+                            ? AppTheme.eventColor.withValues(alpha: 0.06)
+
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+
+                        borderRadius: BorderRadius.circular(12),
+
+                        border: Border.all(
+
                           color: _isInstallment
-                              ? AppTheme.eventColor
-                              : cs.onSurface.withValues(alpha: 0.4),
-                          size: 22,
-                        ),
-                        const Gap(12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Taksitli Ödeme',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                              Text(
-                                'Toplam tutarı aylara bölün',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: cs.onSurface.withValues(alpha: 0.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _isInstallment,
-                          onChanged: (val) =>
-                              setState(() => _isInstallment = val),
-                          activeThumbColor: AppTheme.eventColor,
-                        ),
-                      ],
-                    ),
-                    if (_isInstallment) ...[
-                      const Gap(16),
-                      _buildInstallmentSelector(cs),
-                      const Gap(12),
-                      _buildInstallmentPreview(cs),
-                    ],
-                  ],
-                ),
-              ),
-              const Gap(20),
-            ],
 
-            // ── Save Button ──
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _saveTransaction,
-                icon: Icon(
-                  _isInstallment
-                      ? Icons.credit_card_rounded
-                      : Icons.save_rounded,
-                  size: 20,
-                ),
-                label: Text(
-                  _isInstallment
-                      ? '$_installmentCount Taksit Oluştur'
-                      : AppLocalizations.of(context)!.save,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(18),
-                  backgroundColor: _isExpense
-                      ? AppTheme.expenseColor
-                      : AppTheme.incomeColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
+                              ? AppTheme.eventColor.withValues(alpha: 0.3)
+
+                              : cs.outlineVariant.withValues(alpha: 0.2),
+
+                        ),
+
+                      ),
+
+                      child: Column(
+
+                        children: [
+
+                          Row(
+
+                            children: [
+
+                              Icon(
+
+                                Icons.credit_card_rounded,
+
+                                color: _isInstallment
+
+                                    ? AppTheme.eventColor
+
+                                    : cs.onSurface.withValues(alpha: 0.4),
+
+                                size: 20,
+
+                              ),
+
+                              const Gap(8),
+
+                              Expanded(
+
+                                child: Text(
+
+                                  l10n.installmentPayment,
+
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurface),
+
+                                ),
+
+                              ),
+
+                              SizedBox(
+
+                                height: 32,
+
+                                child: Switch(
+
+                                  value: _isInstallment,
+
+                                  onChanged: (val) {
+
+                                    setState(() => _isInstallment = val);
+
+                                    if (val) {
+
+                                      Future.delayed(const Duration(milliseconds: 200), () {
+
+                                        _amountFocusNode.requestFocus();
+
+                                        _showAmountTooltip();
+
+                                      });
+
+                                    }
+
+                                  },
+
+                                  activeThumbColor: AppTheme.eventColor,
+
+                                ),
+
+                              ),
+
+                            ],
+
+                          ),
+
+                          if (_isInstallment) ...[
+
+                            const Gap(8),
+
+                            _buildInstallmentSelector(cs),
+
+                            const Gap(8),
+
+                            _buildInstallmentPreview(cs),
+
+                          ],
+
+                        ],
+
+                      ),
+
+                    ),
+
+                ],
+
               ),
+
             ),
-          ],
-        ),
+
+          ),
+
+
+
+          // -- Save Button (pinned at bottom) --
+
+          Container(
+
+            padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewPadding.bottom + 12),
+
+            decoration: BoxDecoration(
+
+              color: Theme.of(context).scaffoldBackgroundColor,
+
+              boxShadow: [
+
+                BoxShadow(
+
+                  color: Colors.black.withValues(alpha: 0.06),
+
+                  blurRadius: 8,
+
+                  offset: const Offset(0, -2),
+
+                ),
+
+              ],
+
+            ),
+
+            child: SizedBox(
+
+              width: double.infinity,
+
+              child: ElevatedButton.icon(
+
+                onPressed: _saveTransaction,
+
+                icon: Icon(
+
+                  _isInstallment ? Icons.credit_card_rounded : Icons.save_rounded,
+
+                  size: 18,
+
+                ),
+
+                label: Text(
+
+                  _isInstallment ? l10n.createInstallments(_installmentCount) : l10n.save,
+
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+
+                ),
+
+                style: ElevatedButton.styleFrom(
+
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+
+                  backgroundColor: _isExpense ? AppTheme.expenseColor : AppTheme.incomeColor,
+
+                  foregroundColor: Colors.white,
+
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+
+                  elevation: 0,
+
+                ),
+
+              ),
+
+            ),
+
+          ),
+
+        ],
+
       ),
+
     );
+
   }
 
   Widget _buildTypeButton({
@@ -540,10 +934,11 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   }
 
   Widget _buildInstallmentSelector(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
         Text(
-          'Taksit Sayısı',
+          l10n.installmentCount,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
@@ -611,6 +1006,7 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
   }
 
   Widget _buildInstallmentPreview(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final amountText = _amountController.text.replaceAll(',', '.');
     final totalAmount = double.tryParse(amountText);
 
@@ -622,7 +1018,7 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          'Tutarı girdikten sonra taksit dağılımını göreceksiniz',
+          l10n.installmentPreviewHint,
           style: TextStyle(
             fontSize: 12,
             color: cs.onSurface.withValues(alpha: 0.4),
@@ -633,6 +1029,7 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
     }
 
     final perInstallment = totalAmount / _installmentCount;
+    final localeCode = Localizations.localeOf(context).toString();
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -647,7 +1044,7 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Toplam Tutar',
+                l10n.totalAmount,
                 style: TextStyle(
                   fontSize: 12,
                   color: cs.onSurface.withValues(alpha: 0.5),
@@ -668,14 +1065,14 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Aylık Taksit',
+                l10n.monthlyInstallment,
                 style: TextStyle(
                   fontSize: 12,
                   color: cs.onSurface.withValues(alpha: 0.5),
                 ),
               ),
               Text(
-                '${perInstallment.toStringAsFixed(2)} ${ref.watch(currencySymbolProvider)} × $_installmentCount ay',
+                '${perInstallment.toStringAsFixed(2)} ${ref.watch(currencySymbolProvider)} × $_installmentCount',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -689,14 +1086,14 @@ class _NewTransactionPageState extends ConsumerState<NewTransactionPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Bitiş Tarihi',
+                l10n.endDate,
                 style: TextStyle(
                   fontSize: 12,
                   color: cs.onSurface.withValues(alpha: 0.5),
                 ),
               ),
               Text(
-                DateFormat('MMM yyyy', 'tr').format(
+                DateFormat('MMM yyyy', localeCode).format(
                   DateTime(
                     _selectedDate.year,
                     _selectedDate.month + _installmentCount - 1,

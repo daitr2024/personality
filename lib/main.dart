@@ -13,6 +13,8 @@ import 'features/settings/presentation/providers/locale_provider.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/theme_provider.dart';
 import 'core/services/notification_service.dart';
+import 'core/database/app_database.dart' as core_db;
+import 'features/finance/data/repositories/finance_repository.dart';
 import 'features/onboarding/presentation/pages/onboarding_page.dart';
 
 void main() {
@@ -45,6 +47,18 @@ void main() {
         debugPrint('✅ Firebase initialized, Crashlytics active');
       } catch (e) {
         debugPrint('⚠️ Firebase not initialized: $e');
+      }
+
+      // Auto-generate recurring transactions for current period
+      try {
+        final db = core_db.AppDatabase();
+        final repo = FinanceRepository(db);
+        final generated = await repo.generateRecurringInstances();
+        if (generated > 0) {
+          debugPrint('💰 Auto-generated $generated recurring transactions');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Recurring generation skipped: $e');
       }
 
       runApp(const ProviderScope(child: PersonalityApp()));
