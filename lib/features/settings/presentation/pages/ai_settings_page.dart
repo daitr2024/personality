@@ -14,18 +14,24 @@ class AISettingsPage extends ConsumerStatefulWidget {
 }
 
 class _AISettingsPageState extends ConsumerState<AISettingsPage> {
-  final _endpointController = TextEditingController();
+  // Main config
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
+  final _endpointController = TextEditingController();
+
+  // Backup config
   final _endpointBackupController = TextEditingController();
   final _apiKeyBackupController = TextEditingController();
   final _modelBackupController = TextEditingController();
+
+  // Vision config
   final _visionEndpointController = TextEditingController();
   final _visionApiKeyController = TextEditingController();
   final _visionModelController = TextEditingController();
   final _visionEndpointBackupController = TextEditingController();
   final _visionApiKeyBackupController = TextEditingController();
   final _visionModelBackupController = TextEditingController();
+
   bool _isLoading = true;
   bool _isTesting = false;
   bool _obscureApiKey = true;
@@ -54,8 +60,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       _modelController.text = await service.getModel();
 
       _endpointBackupController.text = await service.getEndpointBackup();
-      final apiKeyBackup = await service.getApiKeyBackup();
-      _apiKeyBackupController.text = apiKeyBackup ?? '';
+      _apiKeyBackupController.text = await service.getApiKeyBackup() ?? '';
       _modelBackupController.text = await service.getModelBackup();
 
       _visionEndpointController.text = await service.getVisionEndpoint();
@@ -80,26 +85,29 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _saveSettings() async {
     final service = ref.read(aiConfigServiceProvider);
+
+    // Main
     await service.setEndpoint(_endpointController.text);
     await service.setApiKey(_apiKeyController.text);
     await service.setModel(_modelController.text);
 
+    // Backup
     await service.setEndpointBackup(_endpointBackupController.text);
     await service.setApiKeyBackup(_apiKeyBackupController.text);
     await service.setModelBackup(_modelBackupController.text);
 
+    // Vision
     await service.setVisionEndpoint(_visionEndpointController.text);
     await service.setVisionApiKey(_visionApiKeyController.text);
     await service.setVisionModel(_visionModelController.text);
 
+    // Vision Backup
     await service.setVisionEndpointBackup(_visionEndpointBackupController.text);
     await service.setVisionApiKeyBackup(_visionApiKeyBackupController.text);
     await service.setVisionModelBackup(_visionModelBackupController.text);
@@ -143,9 +151,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       );
     }
 
-    if (mounted) {
-      setState(() => _isTesting = false);
-    }
+    if (mounted) setState(() => _isTesting = false);
   }
 
   Future<void> _resetToDefaults() async {
@@ -208,6 +214,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -217,11 +224,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () => _showAIHelpDialog(context),
-            tooltip: 'Yapay Zeka Yardımı',
-          ),
           IconButton(
             icon: const Icon(Icons.save),
             onPressed: _isLoading ? null : _saveSettings,
@@ -234,93 +236,25 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
           : ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                // AI Setup Wizard Card
-                GestureDetector(
-                  onTap: () => context.push('/settings/ai-wizard'),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.purple.shade400, Colors.blue.shade400],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.purple.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.auto_fix_high_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const Gap(14),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'AI Kurulum Sihirbazı',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Gap(4),
-                              Text(
-                                'Adım adım yönlendirme ile kolayca yapılandırın',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: Colors.white70,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // ─── Wizard Card ──────────────────────────────
+                _buildWizardCard(cs),
                 const Gap(24),
 
-                _buildSectionTitle(l10n.apiEndpoint),
-                TextField(
-                  controller: _endpointController,
-                  decoration: InputDecoration(
-                    hintText:
-                        'https://generativelanguage.googleapis.com/v1beta/openai/v1',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.link),
-                    helperText: l10n.apiEndpointHint,
-                  ),
-                  keyboardType: TextInputType.url,
+                // ─── Main: API Key ────────────────────────────
+                _buildSectionHeader(
+                  icon: Icons.key_rounded,
+                  color: cs.primary,
+                  title: l10n.apiKey,
+                  subtitle: 'Ses, görsel ve metin analizi için kullanılır',
                 ),
-                const Gap(24),
-
-                _buildSectionTitle(l10n.apiKey),
+                const Gap(12),
                 TextField(
                   controller: _apiKeyController,
                   decoration: InputDecoration(
-                    hintText: 'API Anahtarı',
-                    border: const OutlineInputBorder(),
+                    hintText: 'AIzaSy...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     prefixIcon: const Icon(Icons.key),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -328,22 +262,30 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                             ? Icons.visibility
                             : Icons.visibility_off,
                       ),
-                      onPressed: () {
-                        setState(() => _obscureApiKey = !_obscureApiKey);
-                      },
+                      onPressed: () =>
+                          setState(() => _obscureApiKey = !_obscureApiKey),
                     ),
                     helperText: l10n.apiKeySecureHint,
                   ),
                   obscureText: _obscureApiKey,
                 ),
-                const Gap(24),
+                const Gap(20),
 
-                _buildSectionTitle(l10n.model),
+                // ─── Main: Model ──────────────────────────────
+                _buildSectionHeader(
+                  icon: Icons.psychology_rounded,
+                  color: Colors.purple,
+                  title: l10n.model,
+                  subtitle: 'AI yanıtlarının kalitesini ve hızını belirler',
+                ),
+                const Gap(12),
                 TextField(
                   controller: _modelController,
                   decoration: InputDecoration(
-                    hintText: 'gemini-1.5-flash',
-                    border: const OutlineInputBorder(),
+                    hintText: 'gemini-2.0-flash',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     prefixIcon: const Icon(Icons.psychology),
                     suffixIcon: PopupMenuButton<String>(
                       icon: const Icon(Icons.arrow_drop_down),
@@ -364,18 +306,16 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                 ),
                 const Gap(24),
 
-                _buildBackupSection(),
-                const Gap(32),
-                _buildVisionSection(),
-                const Gap(32),
-
+                // ─── Test Connection ──────────────────────────
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: _isTesting ? null : _testConnection,
-                    style: ElevatedButton.styleFrom(
+                    style: FilledButton.styleFrom(
                       padding: const EdgeInsets.all(16),
-                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     icon: _isTesting
                         ? const SizedBox(
@@ -392,26 +332,91 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-                const Gap(12),
+                const Gap(16),
 
+                // ─── Security Info ────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.security_rounded, color: cs.primary, size: 20),
+                      const Gap(12),
+                      Expanded(
+                        child: Text(
+                          l10n.apiKeySecureInfo,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: cs.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Gap(16),
+
+                // ─── Local STT Toggle ─────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SwitchListTile(
+                    title: Text(
+                      AppLocalizations.of(context)!.alwaysUseLocalAudio,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    subtitle: const Text(
+                      'İnternet olmasa dahi cihaz içi yöntemlerle sesi metne dönüştürür.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    value: _alwaysUseLocalSTT,
+                    onChanged: (value) {
+                      setState(() => _alwaysUseLocalSTT = value);
+                      _saveSettings();
+                    },
+                    secondary: const Icon(Icons.mic_external_off),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+
+                const Gap(32),
+
+                // ─── Advanced Settings ────────────────────────
+                _buildAdvancedSection(l10n, cs),
+
+                const Gap(24),
+
+                // ─── Reset Button ─────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _resetToDefaults,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(14),
                       side: BorderSide(color: Colors.orange.shade700),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     icon: Icon(Icons.restore, color: Colors.orange.shade700),
                     label: Text(
                       l10n.resetToDefaults,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.orange.shade700,
                       ),
@@ -419,364 +424,378 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                   ),
                 ),
                 const Gap(24),
-
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade700),
-                      const Gap(12),
-                      Expanded(
-                        child: Text(
-                          l10n.apiKeySecureInfo,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blue.shade900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Gap(24),
-
-                SwitchListTile(
-                  title: Text(
-                    AppLocalizations.of(context)!.alwaysUseLocalAudio,
-                  ),
-                  subtitle: const Text(
-                    'İnternet olmasa dahi cihaz içi yöntemlerle sesi metne dönüştürür.',
-                  ),
-                  value: _alwaysUseLocalSTT,
-                  onChanged: (value) {
-                    setState(() => _alwaysUseLocalSTT = value);
-                    _saveSettings();
-                  },
-                  secondary: const Icon(Icons.mic_external_off),
-                ),
-                const Gap(24),
               ],
             ),
     );
   }
 
-  Widget _buildBackupSection() {
-    return ExpansionTile(
-      title: const Text(
-        'Yedek API Yapılandırması (Failover)',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      childrenPadding: const EdgeInsets.symmetric(horizontal: 4),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Failover Sistemi',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
-              ),
-              const Gap(8),
-              const Text(
-                'Eğer ana API hata verirse otomatik olarak bu konfigürasyon kullanılacaktır.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const Gap(16),
-              const Text(
-                'Yedek Endpoint',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _endpointBackupController,
-                decoration: const InputDecoration(
-                  hintText: 'Endpoint',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const Gap(16),
-              const Text(
-                'Yedek API Key',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _apiKeyBackupController,
-                obscureText: _obscureApiKey,
-                decoration: const InputDecoration(
-                  hintText: 'API Key',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.key),
-                ),
-              ),
-              const Gap(16),
-              const Text(
-                'Yedek Model',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _modelBackupController,
-                decoration: InputDecoration(
-                  hintText: 'gemini-1.5-flash',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.psychology),
-                  suffixIcon: PopupMenuButton<String>(
-                    icon: const Icon(Icons.arrow_drop_down),
-                    onSelected: (String value) {
-                      _modelBackupController.text = value;
-                      _saveSettings();
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return _availableModels.map((String model) {
-                        return PopupMenuItem<String>(
-                          value: model,
-                          child: Text(model),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
-              ),
-              const Gap(16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  onPressed: () => _testConnection(isBackup: true),
-                  icon: const Icon(Icons.wifi_tethering),
-                  label: Text(
-                    AppLocalizations.of(context)!.testBackupConnection,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  // ─── Wizard Card ────────────────────────────────────────────────
 
-  Widget _buildVisionSection() {
-    return ExpansionTile(
-      title: const Text(
-        'Görsel Analiz Yapılandırması (Vision)',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      childrenPadding: const EdgeInsets.symmetric(horizontal: 4),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.purple.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
+  Widget _buildWizardCard(ColorScheme cs) {
+    return GestureDetector(
+      onTap: () => context.push('/settings/ai-wizard'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.purple.shade400, Colors.blue.shade400],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Vision Sistemi',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.purple,
-                ),
-              ),
-              const Gap(8),
-              const Text(
-                'Makbuz ve fiş tarama işlemleri için görsel destekli API ayarları.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const Gap(16),
-              const Text(
-                'Vision Endpoint',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _visionEndpointController,
-                decoration: const InputDecoration(
-                  hintText: 'Endpoint',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
-                keyboardType: TextInputType.url,
-              ),
-              const Gap(16),
-              const Text(
-                'Vision API Key',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _visionApiKeyController,
-                obscureText: _obscureApiKey,
-                decoration: const InputDecoration(
-                  hintText: 'API Key',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.key),
-                ),
-              ),
-              const Gap(16),
-              const Text(
-                'Vision Model',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Gap(8),
-              TextField(
-                controller: _visionModelController,
-                decoration: InputDecoration(
-                  hintText: 'gemini-1.5-flash',
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.camera_alt),
-                  suffixIcon: PopupMenuButton<String>(
-                    icon: const Icon(Icons.arrow_drop_down),
-                    onSelected: (String value) {
-                      _visionModelController.text = value;
-                      _saveSettings();
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return _availableModels.map((String model) {
-                        return PopupMenuItem<String>(
-                          value: model,
-                          child: Text(model),
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
-              ),
-              const Gap(16),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  onPressed: () => _testConnection(isVision: true),
-                  icon: const Icon(Icons.wifi_tethering),
-                  label: Text(
-                    AppLocalizations.of(context)!.testVisionConnection,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  void _showAIHelpDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.auto_awesome, color: Colors.blue),
-            const Gap(12),
-            Text(AppLocalizations.of(context)!.aiGuide),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.purple.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHelpSection(
-                  'Google Gemini (Önerilir)',
-                  'Günlük 1500 isteğe kadar ücretsiz.',
-                  [
-                    '1. aistudio.google.com adresinden Key alın.',
-                    '2. Endpoint: https://generativelanguage.googleapis.com/v1beta/openai',
-                    '3. Model: gemini-1.5-flash',
-                  ],
-                  Colors.blue,
-                ),
-                const Gap(16),
-                _buildHelpSection('Önemli', '', [
-                  '• "Hata 401": API anahtarınız yanlıştır.',
-                  '• "Hata 404": Endpoint yanlış girilmiştir.',
-                ], Colors.grey),
-              ],
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.auto_fix_high_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
+            const Gap(14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Kurulum Sihirbazı',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Gap(4),
+                  Text(
+                    'İlk kez mi kuruyorsunuz? Adım adım rehber ile kolayca yapılandırın',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white70,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Section Header ─────────────────────────────────────────────
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const Gap(12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context)!.understood),
+      ],
+    );
+  }
+
+  // ─── Advanced Settings Section ──────────────────────────────────
+
+  Widget _buildAdvancedSection(AppLocalizations l10n, ColorScheme cs) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ExpansionTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        collapsedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        leading: Icon(
+          Icons.tune_rounded,
+          color: cs.onSurface.withValues(alpha: 0.5),
+        ),
+        title: const Text(
+          'Gelişmiş Ayarlar',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        subtitle: Text(
+          'Endpoint, yedek API, görsel analiz ayarları',
+          style: TextStyle(
+            fontSize: 12,
+            color: cs.onSurface.withValues(alpha: 0.5),
+          ),
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          const Divider(),
+          const Gap(8),
+
+          // ─── Custom Endpoint ───────────────────────
+          _buildAdvancedLabel('API Endpoint', Icons.link_rounded),
+          const Gap(8),
+          TextField(
+            controller: _endpointController,
+            decoration: InputDecoration(
+              hintText:
+                  'https://generativelanguage.googleapis.com/v1beta/openai/v1',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.link, size: 20),
+              helperText: l10n.apiEndpointHint,
+              isDense: true,
+            ),
+            keyboardType: TextInputType.url,
+            style: const TextStyle(fontSize: 13),
+          ),
+          const Gap(20),
+
+          // ─── Backup API ────────────────────────────
+          _buildAdvancedGroupTitle(
+            'Yedek API (Failover)',
+            'Ana API hata verirse otomatik kullanılır',
+            Colors.orange,
+            Icons.swap_horiz_rounded,
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Yedek Endpoint', Icons.link_rounded),
+          const Gap(8),
+          TextField(
+            controller: _endpointBackupController,
+            decoration: InputDecoration(
+              hintText: 'Endpoint',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.link, size: 20),
+              isDense: true,
+            ),
+            keyboardType: TextInputType.url,
+            style: const TextStyle(fontSize: 13),
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Yedek API Key', Icons.key_rounded),
+          const Gap(8),
+          TextField(
+            controller: _apiKeyBackupController,
+            obscureText: _obscureApiKey,
+            decoration: InputDecoration(
+              hintText: 'API Key',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.key, size: 20),
+              isDense: true,
+            ),
+            style: const TextStyle(fontSize: 13),
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Yedek Model', Icons.psychology_rounded),
+          const Gap(8),
+          _buildModelField(_modelBackupController),
+          const Gap(8),
+          _buildTestButton(
+            l10n.testBackupConnection,
+            () => _testConnection(isBackup: true),
+          ),
+          const Gap(20),
+
+          // ─── Vision API ────────────────────────────
+          _buildAdvancedGroupTitle(
+            'Görsel Analiz (Vision)',
+            'Boş bırakırsanız ana API key kullanılır',
+            Colors.purple,
+            Icons.camera_alt_rounded,
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Vision Endpoint', Icons.link_rounded),
+          const Gap(8),
+          TextField(
+            controller: _visionEndpointController,
+            decoration: InputDecoration(
+              hintText: 'Boş = Ana endpoint',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.link, size: 20),
+              isDense: true,
+            ),
+            keyboardType: TextInputType.url,
+            style: const TextStyle(fontSize: 13),
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Vision API Key', Icons.key_rounded),
+          const Gap(8),
+          TextField(
+            controller: _visionApiKeyController,
+            obscureText: _obscureApiKey,
+            decoration: InputDecoration(
+              hintText: 'Boş = Ana API key',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              prefixIcon: const Icon(Icons.key, size: 20),
+              isDense: true,
+            ),
+            style: const TextStyle(fontSize: 13),
+          ),
+          const Gap(12),
+          _buildAdvancedLabel('Vision Model', Icons.psychology_rounded),
+          const Gap(8),
+          _buildModelField(_visionModelController),
+          const Gap(8),
+          _buildTestButton(
+            l10n.testVisionConnection,
+            () => _testConnection(isVision: true),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHelpSection(
+  // ─── Helper Widgets ─────────────────────────────────────────────
+
+  Widget _buildAdvancedLabel(String text, IconData icon) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: cs.onSurface.withValues(alpha: 0.4)),
+        const Gap(8),
+        Text(
+          text,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: cs.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedGroupTitle(
     String title,
     String subtitle,
-    List<String> steps,
     Color color,
+    IconData icon,
   ) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontSize: 15,
-            ),
-          ),
-          if (subtitle.isNotEmpty) ...[
-            const Gap(4),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-            ),
-          ],
-          const Gap(8),
-          ...steps.map(
-            (step) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(step, style: const TextStyle(fontSize: 13)),
+          Icon(icon, color: color, size: 20),
+          const Gap(10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: cs.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModelField(TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: 'gemini-2.0-flash',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        prefixIcon: const Icon(Icons.psychology, size: 20),
+        isDense: true,
+        suffixIcon: PopupMenuButton<String>(
+          icon: const Icon(Icons.arrow_drop_down, size: 20),
+          onSelected: (String value) {
+            controller.text = value;
+            _saveSettings();
+          },
+          itemBuilder: (BuildContext context) {
+            return _availableModels.map((String model) {
+              return PopupMenuItem<String>(
+                value: model,
+                child: Text(model, style: const TextStyle(fontSize: 13)),
+              );
+            }).toList();
+          },
+        ),
+      ),
+      style: const TextStyle(fontSize: 13),
+    );
+  }
+
+  Widget _buildTestButton(String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: _isTesting ? null : onPressed,
+        icon: const Icon(Icons.wifi_tethering, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 13)),
       ),
     );
   }
