@@ -7,8 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../../../features/notes/presentation/widgets/audio_analysis_dialog.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../features/settings/presentation/providers/ai_config_provider.dart';
@@ -62,7 +60,6 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
       _controller.clear();
-      // Directly analyze text
       showDialog(
         context: context,
         builder: (context) => AudioAnalysisDialog(text: text),
@@ -71,61 +68,10 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   }
 
   Future<void> _toggleRecording() async {
-    final speechService = ref.read(localSpeechServiceProvider);
-    if (_isRecording || speechService.isListening) {
+    if (_isRecording) {
       await _stopRecording();
     } else {
-      final configService = ref.read(aiConfigServiceProvider);
-      final isConfigured = await configService.isConfigured();
-      final alwaysLocal = await configService.getAlwaysUseLocalSTT();
-      final endpoint = await configService.getEndpoint();
-
-      // Gemini has no Whisper endpoint, so always use local STT for Gemini users
-      final hasWhisperEndpoint =
-          endpoint.contains('groq.com') || endpoint.contains('openai.com');
-
-      if (!isConfigured || alwaysLocal || !hasWhisperEndpoint) {
-        await _startLocalTranscription();
-      } else {
-        await _startRecording();
-      }
-    }
-  }
-
-  Future<void> _startLocalTranscription() async {
-    final speechService = ref.read(localSpeechServiceProvider);
-
-    setState(() {
-      _isRecording = true;
-      _controller.text = '';
-    });
-    _pulseController.repeat(reverse: true);
-
-    try {
-      final result = await speechService.transcribeLive(
-        onPartialResult: (text) {
-          setState(() => _controller.text = text);
-        },
-        onListeningStopped: () {
-          if (mounted) {
-            setState(() {
-              _isRecording = false;
-              _pulseController.stop();
-              _pulseController.reset();
-            });
-          }
-        },
-      );
-
-      if (result != null && result.isNotEmpty && mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AudioAnalysisDialog(text: result),
-        );
-      }
-    } catch (e) {
-      debugPrint('Local STT Error: $e');
-      setState(() => _isRecording = false);
+      await _startRecording();
     }
   }
 
@@ -160,7 +106,6 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
       final amp = await _audioRecorder.getAmplitude();
       if (!mounted) return;
 
-      // 2-second silence detection
       if (amp.current < _silenceThresholdDb) {
         _silenceTimer ??= Timer(const Duration(seconds: 2), () {
           if (_isRecording && mounted) {
@@ -180,12 +125,6 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
     _silenceTimer?.cancel();
     _silenceTimer = null;
 
-    final speechService = ref.read(localSpeechServiceProvider);
-    if (speechService.isListening) {
-      speechService.stop();
-      return;
-    }
-
     try {
       final path = await _audioRecorder.stop();
       _pulseController.stop();
@@ -203,75 +142,37 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   Future<void> _transcribe(String path) async {
     setState(() => _isTranscribing = true);
     try {
-      final configService = ref.read(aiConfigServiceProvider);
-      final userApiKey = await configService.getApiKey();
-      final userEndpoint = await configService.getEndpoint();
+      // Use Gemini to transcribe audio to text
+      final analysisService = ref.read(audioAnalysisServiceProvider);
+      final transcribedText = await analysisService.transcribeAudioFile(path);
 
-      // If user has a custom endpoint (like Groq or OpenAI), use it for transcription too
-      String whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-      String whisperKey = '';
-
-      // Require user-configured API key — no hardcoded fallback
-      if (userApiKey == null || userApiKey.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!.apiKeyNotSet),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      whisperKey = 'Bearer $userApiKey';
-      if (userEndpoint.contains('openai.com')) {
-        whisperUrl = 'https://api.openai.com/v1/audio/transcriptions';
-      } else if (userEndpoint.contains('groq.com')) {
-        whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-      }
-      // If it's a generic OpenAI-compatible endpoint, we try to append the standard path
-      // but for now let's stick to known providers for reliability
-
-      final request = http.MultipartRequest('POST', Uri.parse(whisperUrl));
-      request.headers['Authorization'] = whisperKey;
-      request.fields['model'] = whisperUrl.contains('openai.com')
-          ? 'whisper-1'
-          : 'whisper-large-v3';
-      request.fields['language'] = 'tr';
-      request.files.add(await http.MultipartFile.fromPath('file', path));
-
-      final response = await request.send();
-      final body = await response.stream.bytesToString();
-
-      if (response.statusCode == 200) {
-        final text = jsonDecode(body)['text'];
-        if (text != null && mounted) {
-          showDialog(
-            context: context,
-            builder: (context) =>
-                AudioAnalysisDialog(text: text, audioPath: path),
-          );
-        }
-      } else {
-        if (mounted) {
-          String errorMsg = 'Ses analizi hatası (${response.statusCode})';
-          try {
-            final errorData = jsonDecode(body);
-            if (errorData['error']?['message'] != null) {
-              errorMsg = errorData['error']['message'];
-            }
-          } catch (_) {}
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-          );
-        }
+      if (transcribedText != null && transcribedText.isNotEmpty && mounted) {
+        // Open AudioAnalysisDialog with the transcribed text for AI analysis
+        showDialog(
+          context: context,
+          builder: (context) =>
+              AudioAnalysisDialog(text: transcribedText, audioPath: path),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.apiKeyNotSet),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('Transcribe error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ses analizi hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      if (context.mounted) setState(() => _isTranscribing = false);
+      if (mounted) setState(() => _isTranscribing = false);
     }
   }
 

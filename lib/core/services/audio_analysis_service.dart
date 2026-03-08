@@ -1,5 +1,6 @@
 // ignore_for_file: unused_import, unused_field, unused_local_variable, unused_element
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -150,6 +151,104 @@ class AudioAnalysisService {
   final AIConfigService _configService;
 
   AudioAnalysisService(this._configService);
+
+  /// Transcribe an audio file using Gemini API (replaces local STT)
+  /// Returns the transcribed text, or null on failure.
+  Future<String?> transcribeAudioFile(String audioPath) async {
+    final apiKey = (await _configService.getApiKey())?.trim();
+    if (apiKey == null || apiKey.isEmpty) return null;
+
+    final model = await _configService.getModel();
+    final file = File(audioPath);
+    if (!await file.exists()) return null;
+
+    final audioBytes = await file.readAsBytes();
+    final base64Audio = base64Encode(audioBytes);
+
+    // Determine mime type from extension
+    final ext = audioPath.split('.').last.toLowerCase();
+    String mimeType;
+    switch (ext) {
+      case 'wav':
+        mimeType = 'audio/wav';
+        break;
+      case 'mp3':
+        mimeType = 'audio/mp3';
+        break;
+      case 'ogg':
+        mimeType = 'audio/ogg';
+        break;
+      case 'm4a':
+      case 'aac':
+        mimeType = 'audio/aac';
+        break;
+      default:
+        mimeType = 'audio/wav';
+    }
+
+    final requestBody = jsonEncode({
+      'contents': [
+        {
+          'parts': [
+            {
+              'text':
+                  'Transcribe this audio. Return ONLY the exact spoken text, nothing else. '
+                  'If the language is Turkish, transcribe in Turkish. '
+                  'Do not add any introduction, formatting, or explanation.',
+            },
+            {
+              'inline_data': {'mime_type': mimeType, 'data': base64Audio},
+            },
+          ],
+        },
+      ],
+      'generationConfig': {'temperature': 0.0},
+    });
+
+    final baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+    var url = '$baseUrl/models/$model:generateContent?key=$apiKey';
+
+    try {
+      var response = await http
+          .post(
+            Uri.parse(url),
+            headers: {'Content-Type': 'application/json'},
+            body: requestBody,
+          )
+          .timeout(const Duration(seconds: 60));
+
+      // Fallback if model not found
+      if (response.statusCode == 404) {
+        url = '$baseUrl/models/gemini-2.0-flash:generateContent?key=$apiKey';
+        response = await http
+            .post(
+              Uri.parse(url),
+              headers: {'Content-Type': 'application/json'},
+              body: requestBody,
+            )
+            .timeout(const Duration(seconds: 60));
+      }
+
+      if (response.statusCode == 200) {
+        final rawBody = utf8.decode(response.bodyBytes);
+        final outerJson = jsonDecode(rawBody);
+        final text =
+            outerJson['candidates']?[0]?['content']?['parts']?[0]?['text']
+                ?.toString()
+                .trim();
+        return (text != null && text.isNotEmpty) ? text : null;
+      } else {
+        final errorBody = utf8.decode(response.bodyBytes);
+        debugPrint(
+          'Gemini audio transcription error (${response.statusCode}): $errorBody',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Audio transcription error: $e');
+      return null;
+    }
+  }
 
   Future<(AnalysisResult?, String?)> analyzeText(
     String text, {

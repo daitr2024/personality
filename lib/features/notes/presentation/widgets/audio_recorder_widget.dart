@@ -1,10 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -38,7 +36,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
 
   Timer? _amplitudeTimer;
   Timer? _silenceTimer;
-  double _currentAmplitude = -160.0; // Min dB
+  double _currentAmplitude = -160.0;
   static const double _silenceThresholdDb = -45.0;
 
   @override
@@ -46,7 +44,6 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     super.initState();
     _audioRecorder = AudioRecorder();
     if (widget.autoStart) {
-      // Delay slightly to ensure UI is ready
       Future.delayed(const Duration(milliseconds: 500), _startRecording);
     }
   }
@@ -72,7 +69,6 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
           _currentAmplitude = amp.current;
         });
 
-        // 2-second silence detection for cloud recording
         if (amp.current < _silenceThresholdDb) {
           _silenceTimer ??= Timer(const Duration(seconds: 2), () {
             if (_isRecording && mounted) {
@@ -89,50 +85,15 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   }
 
   Future<void> _handlePress() async {
-    final speechService = ref.read(localSpeechServiceProvider);
-    if (_isRecording || speechService.isListening) {
+    if (_isRecording) {
       await _stopRecording();
     } else {
-      final configService = ref.read(aiConfigServiceProvider);
-      final isConfigured = await configService.isConfigured();
-      final alwaysLocal = await configService.getAlwaysUseLocalSTT();
-      final endpoint = await configService.getEndpoint();
-
-      // Gemini has no Whisper endpoint, so always use local STT for Gemini users
-      final hasWhisperEndpoint =
-          endpoint.contains('groq.com') || endpoint.contains('openai.com');
-
-      if (!isConfigured || alwaysLocal || !hasWhisperEndpoint) {
-        await _startLocalTranscription();
-      } else {
-        await _startRecording();
-      }
-    }
-  }
-
-  Future<void> _startLocalTranscription() async {
-    final speechService = ref.read(localSpeechServiceProvider);
-
-    setState(() {
-      _isRecording = true;
-    });
-
-    final result = await speechService.transcribeLive(
-      onListeningStopped: () {
-        if (mounted) {
-          setState(() => _isRecording = false);
-        }
-      },
-    );
-
-    if (result != null && result.isNotEmpty && mounted) {
-      widget.onRecordingComplete('', result);
+      await _startRecording();
     }
   }
 
   Future<void> _startRecording() async {
     try {
-      // Request microphone permission
       var status = await Permission.microphone.status;
       if (status != PermissionStatus.granted) {
         status = await Permission.microphone.request();
@@ -174,14 +135,8 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   Future<void> _stopRecording() async {
     _silenceTimer?.cancel();
     _silenceTimer = null;
-
-    final speechService = ref.read(localSpeechServiceProvider);
-    if (speechService.isListening) {
-      speechService.stop();
-      return;
-    }
-
     _amplitudeTimer?.cancel();
+
     try {
       final path = await _audioRecorder.stop();
 
@@ -195,7 +150,6 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         final size = await file.length();
         debugPrint('Recording saved to: $path (Size: $size bytes)');
 
-        // Start Transcription
         if (size > 0) {
           await _transcribeAudio(path);
         } else {
@@ -213,64 +167,19 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     });
 
     try {
-      final configService = ref.read(aiConfigServiceProvider);
-      final userApiKey = await configService.getApiKey();
+      // Use Gemini API to transcribe audio
+      final analysisService = ref.read(audioAnalysisServiceProvider);
+      final transcribedText = await analysisService.transcribeAudioFile(path);
 
-      // Require user-configured API key — no hardcoded fallback
-      if (userApiKey == null || userApiKey.isEmpty) {
-        widget.onRecordingComplete(path, null);
-        return;
-      }
-
-      final userEndpoint = await configService.getEndpoint();
-      String whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-      String whisperKey = 'Bearer $userApiKey';
-
-      if (userEndpoint.contains('openai.com')) {
-        whisperUrl = 'https://api.openai.com/v1/audio/transcriptions';
-      } else if (userEndpoint.contains('groq.com')) {
-        whisperUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-      }
-
-      final request = http.MultipartRequest('POST', Uri.parse(whisperUrl));
-
-      request.headers['Authorization'] = whisperKey;
-      request.fields['model'] = whisperUrl.contains('openai.com')
-          ? 'whisper-1'
-          : 'whisper-large-v3';
-      request.fields['language'] = 'tr'; // Turkish
-
-      request.files.add(await http.MultipartFile.fromPath('file', path));
-
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      debugPrint('Groq Response: ${response.statusCode} - $responseBody');
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(responseBody);
-        final text = jsonResponse['text'] as String?;
-
-        // Delete the audio file to save space (User Request)
+      if (transcribedText != null && transcribedText.isNotEmpty && mounted) {
+        // Delete the audio file to save space
         if (await File(path).exists()) {
           await File(path).delete();
           debugPrint('Deleted audio file to save space: $path');
         }
 
-        widget.onRecordingComplete('', text);
+        widget.onRecordingComplete('', transcribedText);
       } else {
-        debugPrint('Transcription failed');
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                AppLocalizations.of(
-                  context,
-                )!.transcriptionError(response.statusCode),
-              ),
-            ),
-          );
-        }
         widget.onRecordingComplete(path, null);
       }
     } catch (e) {
@@ -301,14 +210,12 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(),
-          const SizedBox(height: 16), // Changed Gap to SizedBox
+          const SizedBox(height: 16),
           Text(AppLocalizations.of(context)!.aiTranscribing),
         ],
       );
     }
 
-    // Normalize dB (-50 to 0) to 0.0 - 1.0 for visual height
-    // Usually silence is -160, quiet room -60, loud -10.
     final normalized = ((_currentAmplitude + 60) / 60).clamp(0.0, 1.0);
 
     return Column(
@@ -321,11 +228,8 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.green, size: 20),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Ses kaydedildi',
-                    style: const TextStyle(fontSize: 12),
-                  ),
+                const Expanded(
+                  child: Text('Ses kaydedildi', style: TextStyle(fontSize: 12)),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red, size: 20),
@@ -340,7 +244,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
           onTap: _handlePress,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 100),
-            padding: EdgeInsets.all(12 + (normalized * 10)), // Pulse effect
+            padding: EdgeInsets.all(12 + (normalized * 10)),
             decoration: BoxDecoration(
               color: _isRecording ? Colors.red.shade100 : Colors.blue.shade50,
               shape: BoxShape.circle,

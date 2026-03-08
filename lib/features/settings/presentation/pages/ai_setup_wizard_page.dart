@@ -31,7 +31,6 @@ class _AISetupWizardPageState extends ConsumerState<AISetupWizardPage>
   // Clipboard tracking
   bool _waitingForClipboard = false;
   bool _clipboardKeyDetected = false;
-  String? _detectedClipboardKey;
 
   // Animation controllers
   late AnimationController _pulseController;
@@ -101,7 +100,6 @@ class _AISetupWizardPageState extends ConsumerState<AISetupWizardPage>
           if (mounted) {
             setState(() {
               _clipboardKeyDetected = true;
-              _detectedClipboardKey = text;
               _waitingForClipboard = false;
             });
             // Show the detection dialog
@@ -185,7 +183,6 @@ class _AISetupWizardPageState extends ConsumerState<AISetupWizardPage>
               _apiKeyController.text = key;
               setState(() {
                 _clipboardKeyDetected = false;
-                _detectedClipboardKey = null;
               });
               Navigator.pop(ctx);
 

@@ -35,7 +35,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
   bool _isLoading = true;
   bool _isTesting = false;
   bool _obscureApiKey = true;
-  bool _alwaysUseLocalSTT = false;
 
   final List<String> _availableModels = [
     'gemini-2.0-flash',
@@ -72,7 +71,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       _visionApiKeyBackupController.text =
           await service.getVisionApiKeyBackup() ?? '';
       _visionModelBackupController.text = await service.getVisionModelBackup();
-      _alwaysUseLocalSTT = await service.getAlwaysUseLocalSTT();
     } catch (e) {
       debugPrint('Error loading AI settings: $e');
       if (mounted) {
@@ -111,7 +109,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
     await service.setVisionEndpointBackup(_visionEndpointBackupController.text);
     await service.setVisionApiKeyBackup(_visionApiKeyBackupController.text);
     await service.setVisionModelBackup(_visionModelBackupController.text);
-    await service.setAlwaysUseLocalSTT(_alwaysUseLocalSTT);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -365,33 +362,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                   ),
                 ),
                 const Gap(16),
-
-                // ─── Local STT Toggle ─────────────────────────
-                Container(
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: SwitchListTile(
-                    title: Text(
-                      AppLocalizations.of(context)!.alwaysUseLocalAudio,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    subtitle: const Text(
-                      'İnternet olmasa dahi cihaz içi yöntemlerle sesi metne dönüştürür.',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    value: _alwaysUseLocalSTT,
-                    onChanged: (value) {
-                      setState(() => _alwaysUseLocalSTT = value);
-                      _saveSettings();
-                    },
-                    secondary: const Icon(Icons.mic_external_off),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
 
                 const Gap(32),
 
