@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -21,6 +22,11 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // Silence ALL debugPrint output in release builds
+      if (kReleaseMode) {
+        debugPrint = (String? message, {int? wrapWidth}) {};
+      }
       tz.initializeTimeZones();
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
@@ -70,7 +76,7 @@ void main() {
       } catch (_) {
         // Firebase not initialized — just print
       }
-      debugPrint('🔴 Uncaught error: $error\n$stack');
+      if (kDebugMode) debugPrint('🔴 Uncaught error: $error\n$stack');
     },
   );
 }
