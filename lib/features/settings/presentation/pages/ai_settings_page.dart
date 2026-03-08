@@ -379,7 +379,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                     ),
                     subtitle: Text(
                       _autoStopOnSilence
-                          ? '2 saniyelik sessizlik algılandığında kayıt otomatik durur'
+                          ? '3 saniyelik sessizlik algılandığında kayıt otomatik durur'
                           : 'Kayıt sadece siz durdurana kadar devam eder',
                       style: const TextStyle(fontSize: 12),
                     ),

@@ -29,7 +29,8 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
 
   Timer? _amplitudeTimer;
   Timer? _silenceTimer;
-  static const double _silenceThresholdDb = -45.0;
+  Timer? _graceTimer;
+  static const double _silenceThresholdDb = -50.0;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -50,6 +51,7 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   void dispose() {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
+    _graceTimer?.cancel();
     _controller.dispose();
     _audioRecorder.dispose();
     _pulseController.dispose();
@@ -94,7 +96,13 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         final configService = ref.read(aiConfigServiceProvider);
         final autoStop = await configService.getAutoStopOnSilence();
         if (autoStop) {
-          _startSilenceDetection();
+          // Wait 3 seconds before starting silence detection
+          // (gives the user time to start speaking)
+          _graceTimer = Timer(const Duration(seconds: 3), () {
+            if (_isRecording && mounted) {
+              _startSilenceDetection();
+            }
+          });
         }
       }
     } catch (e) {
@@ -105,7 +113,7 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   void _startSilenceDetection() {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
-    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
+    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 200), (
       timer,
     ) async {
       if (!_isRecording) return;
@@ -113,9 +121,9 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
       if (!mounted) return;
 
       if (amp.current < _silenceThresholdDb) {
-        _silenceTimer ??= Timer(const Duration(seconds: 2), () {
+        _silenceTimer ??= Timer(const Duration(seconds: 3), () {
           if (_isRecording && mounted) {
-            debugPrint('2s silence detected — auto-stopping recording');
+            debugPrint('3s silence detected — auto-stopping recording');
             _stopRecording();
           }
         });
@@ -129,6 +137,7 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   Future<void> _stopRecording() async {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
+    _graceTimer?.cancel();
     _silenceTimer = null;
 
     try {

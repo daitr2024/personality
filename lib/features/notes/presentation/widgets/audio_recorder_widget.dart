@@ -36,8 +36,9 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
 
   Timer? _amplitudeTimer;
   Timer? _silenceTimer;
+  Timer? _graceTimer;
   double _currentAmplitude = -160.0;
-  static const double _silenceThresholdDb = -45.0;
+  static const double _silenceThresholdDb = -50.0;
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   void dispose() {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
+    _graceTimer?.cancel();
     _audioRecorder.dispose();
     super.dispose();
   }
@@ -59,7 +61,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   void _startAmplitudeTimer({bool enableAutoStop = true}) {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
-    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
+    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 200), (
       timer,
     ) async {
       if (!_isRecording) return;
@@ -72,9 +74,9 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         // Only auto-stop if the setting is enabled
         if (enableAutoStop) {
           if (amp.current < _silenceThresholdDb) {
-            _silenceTimer ??= Timer(const Duration(seconds: 2), () {
+            _silenceTimer ??= Timer(const Duration(seconds: 3), () {
               if (_isRecording && mounted) {
-                debugPrint('2s silence detected — auto-stopping recording');
+                debugPrint('3s silence detected — auto-stopping recording');
                 _stopRecording();
               }
             });
@@ -114,7 +116,20 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         // Check if auto-stop on silence is enabled
         final configService = ref.read(aiConfigServiceProvider);
         final autoStop = await configService.getAutoStopOnSilence();
-        _startAmplitudeTimer(enableAutoStop: autoStop);
+
+        // Always start amplitude timer for visual feedback
+        _startAmplitudeTimer(enableAutoStop: false);
+
+        // Grace period: wait 3 seconds before enabling silence detection
+        if (autoStop) {
+          _graceTimer = Timer(const Duration(seconds: 3), () {
+            if (_isRecording && mounted) {
+              // Cancel the visual-only timer and restart with auto-stop
+              _amplitudeTimer?.cancel();
+              _startAmplitudeTimer(enableAutoStop: true);
+            }
+          });
+        }
 
         debugPrint('Started recording to: $path');
 
@@ -142,6 +157,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     _silenceTimer?.cancel();
     _silenceTimer = null;
     _amplitudeTimer?.cancel();
+    _graceTimer?.cancel();
 
     try {
       final path = await _audioRecorder.stop();
