@@ -234,6 +234,73 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
           : ListView(
               padding: const EdgeInsets.all(24),
               children: [
+                // AI Setup Wizard Card
+                GestureDetector(
+                  onTap: () => context.push('/settings/ai-wizard'),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.purple.shade400, Colors.blue.shade400],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.purple.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.auto_fix_high_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const Gap(14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'AI Kurulum Sihirbazı',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Gap(4),
+                              Text(
+                                'Adım adım yönlendirme ile kolayca yapılandırın',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Gap(24),
+
                 _buildSectionTitle(l10n.apiEndpoint),
                 TextField(
                   controller: _endpointController,

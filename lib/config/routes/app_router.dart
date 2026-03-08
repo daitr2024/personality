@@ -7,6 +7,7 @@ import '../../features/finance/presentation/pages/finance_summary_page.dart';
 import '../../features/finance/presentation/pages/new_transaction_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/ai_settings_page.dart';
+import '../../features/settings/presentation/pages/ai_setup_wizard_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/statistics/presentation/pages/statistics_page.dart';
 import '../../features/settings/presentation/pages/theme_settings_page.dart';
@@ -105,6 +106,13 @@ final router = GoRouter(
           path: 'ai',
           pageBuilder: (context, state) =>
               _buildPageTransition(child: const AISettingsPage(), state: state),
+        ),
+        GoRoute(
+          path: 'ai-wizard',
+          pageBuilder: (context, state) => _buildPageTransition(
+            child: const AISetupWizardPage(),
+            state: state,
+          ),
         ),
         GoRoute(
           path: 'profile',
