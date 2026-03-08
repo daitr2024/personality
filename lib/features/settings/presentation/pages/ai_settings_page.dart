@@ -35,6 +35,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
   bool _isLoading = true;
   bool _isTesting = false;
   bool _obscureApiKey = true;
+  bool _autoStopOnSilence = true;
 
   final List<String> _availableModels = [
     'gemini-2.0-flash',
@@ -71,6 +72,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
       _visionApiKeyBackupController.text =
           await service.getVisionApiKeyBackup() ?? '';
       _visionModelBackupController.text = await service.getVisionModelBackup();
+      _autoStopOnSilence = await service.getAutoStopOnSilence();
     } catch (e) {
       debugPrint('Error loading AI settings: $e');
       if (mounted) {
@@ -109,6 +111,7 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
     await service.setVisionEndpointBackup(_visionEndpointBackupController.text);
     await service.setVisionApiKeyBackup(_visionApiKeyBackupController.text);
     await service.setVisionModelBackup(_visionModelBackupController.text);
+    await service.setAutoStopOnSilence(_autoStopOnSilence);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -362,6 +365,42 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                   ),
                 ),
                 const Gap(16),
+
+                // ─── Auto Stop on Silence Toggle ──────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SwitchListTile(
+                    title: const Text(
+                      'Sessizlikte Otomatik Durdur',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      _autoStopOnSilence
+                          ? '2 saniyelik sessizlik algılandığında kayıt otomatik durur'
+                          : 'Kayıt sadece siz durdurana kadar devam eder',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: _autoStopOnSilence,
+                    onChanged: (value) {
+                      setState(() => _autoStopOnSilence = value);
+                      _saveSettings();
+                    },
+                    secondary: Icon(
+                      _autoStopOnSilence
+                          ? Icons.timer_rounded
+                          : Icons.timer_off_rounded,
+                      color: _autoStopOnSilence
+                          ? cs.primary
+                          : cs.onSurface.withValues(alpha: 0.4),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
 
                 const Gap(32),
 

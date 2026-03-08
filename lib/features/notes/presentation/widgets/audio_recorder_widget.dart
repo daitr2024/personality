@@ -56,7 +56,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     super.dispose();
   }
 
-  void _startAmplitudeTimer() {
+  void _startAmplitudeTimer({bool enableAutoStop = true}) {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
     _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
@@ -69,16 +69,19 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
           _currentAmplitude = amp.current;
         });
 
-        if (amp.current < _silenceThresholdDb) {
-          _silenceTimer ??= Timer(const Duration(seconds: 2), () {
-            if (_isRecording && mounted) {
-              debugPrint('2s silence detected — auto-stopping recording');
-              _stopRecording();
-            }
-          });
-        } else {
-          _silenceTimer?.cancel();
-          _silenceTimer = null;
+        // Only auto-stop if the setting is enabled
+        if (enableAutoStop) {
+          if (amp.current < _silenceThresholdDb) {
+            _silenceTimer ??= Timer(const Duration(seconds: 2), () {
+              if (_isRecording && mounted) {
+                debugPrint('2s silence detected — auto-stopping recording');
+                _stopRecording();
+              }
+            });
+          } else {
+            _silenceTimer?.cancel();
+            _silenceTimer = null;
+          }
         }
       }
     });
@@ -108,7 +111,10 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         const config = RecordConfig(encoder: AudioEncoder.wav);
         await _audioRecorder.start(config, path: path);
 
-        _startAmplitudeTimer();
+        // Check if auto-stop on silence is enabled
+        final configService = ref.read(aiConfigServiceProvider);
+        final autoStop = await configService.getAutoStopOnSilence();
+        _startAmplitudeTimer(enableAutoStop: autoStop);
 
         debugPrint('Started recording to: $path');
 

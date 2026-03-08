@@ -89,7 +89,13 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         );
         setState(() => _isRecording = true);
         _pulseController.repeat(reverse: true);
-        _startSilenceDetection();
+
+        // Only enable silence detection if user hasn't disabled it
+        final configService = ref.read(aiConfigServiceProvider);
+        final autoStop = await configService.getAutoStopOnSilence();
+        if (autoStop) {
+          _startSilenceDetection();
+        }
       }
     } catch (e) {
       debugPrint('Start error: $e');

@@ -22,6 +22,7 @@ class AIConfigService {
   static const _keyVisionKeyBackup = 'vision_api_key_backup';
   static const _keyVisionModelBackup = 'vision_model_backup';
   static const _keyAlwaysUseLocalSTT = 'always_use_local_stt';
+  static const _keyAutoStopOnSilence = 'auto_stop_on_silence';
 
   // Default values (Gemini Focused)
   static const _defaultEndpoint =
@@ -154,6 +155,17 @@ class AIConfigService {
   /// Set always use local STT
   Future<void> setAlwaysUseLocalSTT(bool value) async {
     await _storage.write(key: _keyAlwaysUseLocalSTT, value: value.toString());
+  }
+
+  /// Get auto-stop on silence setting (default: true)
+  Future<bool> getAutoStopOnSilence() async {
+    final value = await _storage.read(key: _keyAutoStopOnSilence);
+    return value != 'false'; // default true
+  }
+
+  /// Set auto-stop on silence
+  Future<void> setAutoStopOnSilence(bool value) async {
+    await _storage.write(key: _keyAutoStopOnSilence, value: value.toString());
   }
 
   /// Reset all settings to defaults
