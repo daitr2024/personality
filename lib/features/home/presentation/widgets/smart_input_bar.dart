@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
@@ -28,6 +29,10 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   bool _isRecording = false;
   bool _isTranscribing = false;
 
+  Timer? _amplitudeTimer;
+  Timer? _silenceTimer;
+  static const double _silenceThresholdDb = -45.0;
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -45,6 +50,8 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
 
   @override
   void dispose() {
+    _amplitudeTimer?.cancel();
+    _silenceTimer?.cancel();
     _controller.dispose();
     _audioRecorder.dispose();
     _pulseController.dispose();
@@ -71,8 +78,13 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
       final configService = ref.read(aiConfigServiceProvider);
       final isConfigured = await configService.isConfigured();
       final alwaysLocal = await configService.getAlwaysUseLocalSTT();
+      final endpoint = await configService.getEndpoint();
 
-      if (!isConfigured || alwaysLocal) {
+      // Gemini has no Whisper endpoint, so always use local STT for Gemini users
+      final hasWhisperEndpoint =
+          endpoint.contains('groq.com') || endpoint.contains('openai.com');
+
+      if (!isConfigured || alwaysLocal || !hasWhisperEndpoint) {
         await _startLocalTranscription();
       } else {
         await _startRecording();
@@ -131,13 +143,43 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         );
         setState(() => _isRecording = true);
         _pulseController.repeat(reverse: true);
+        _startSilenceDetection();
       }
     } catch (e) {
       debugPrint('Start error: $e');
     }
   }
 
+  void _startSilenceDetection() {
+    _amplitudeTimer?.cancel();
+    _silenceTimer?.cancel();
+    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
+      timer,
+    ) async {
+      if (!_isRecording) return;
+      final amp = await _audioRecorder.getAmplitude();
+      if (!mounted) return;
+
+      // 2-second silence detection
+      if (amp.current < _silenceThresholdDb) {
+        _silenceTimer ??= Timer(const Duration(seconds: 2), () {
+          if (_isRecording && mounted) {
+            debugPrint('2s silence detected — auto-stopping recording');
+            _stopRecording();
+          }
+        });
+      } else {
+        _silenceTimer?.cancel();
+        _silenceTimer = null;
+      }
+    });
+  }
+
   Future<void> _stopRecording() async {
+    _amplitudeTimer?.cancel();
+    _silenceTimer?.cancel();
+    _silenceTimer = null;
+
     final speechService = ref.read(localSpeechServiceProvider);
     if (speechService.isListening) {
       speechService.stop();

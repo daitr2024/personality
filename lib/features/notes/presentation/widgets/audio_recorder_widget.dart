@@ -37,7 +37,9 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   String? _recordingPath;
 
   Timer? _amplitudeTimer;
+  Timer? _silenceTimer;
   double _currentAmplitude = -160.0; // Min dB
+  static const double _silenceThresholdDb = -45.0;
 
   @override
   void initState() {
@@ -52,12 +54,14 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   @override
   void dispose() {
     _amplitudeTimer?.cancel();
+    _silenceTimer?.cancel();
     _audioRecorder.dispose();
     super.dispose();
   }
 
   void _startAmplitudeTimer() {
     _amplitudeTimer?.cancel();
+    _silenceTimer?.cancel();
     _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (
       timer,
     ) async {
@@ -67,6 +71,19 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         setState(() {
           _currentAmplitude = amp.current;
         });
+
+        // 2-second silence detection for cloud recording
+        if (amp.current < _silenceThresholdDb) {
+          _silenceTimer ??= Timer(const Duration(seconds: 2), () {
+            if (_isRecording && mounted) {
+              debugPrint('2s silence detected — auto-stopping recording');
+              _stopRecording();
+            }
+          });
+        } else {
+          _silenceTimer?.cancel();
+          _silenceTimer = null;
+        }
       }
     });
   }
@@ -79,8 +96,13 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
       final configService = ref.read(aiConfigServiceProvider);
       final isConfigured = await configService.isConfigured();
       final alwaysLocal = await configService.getAlwaysUseLocalSTT();
+      final endpoint = await configService.getEndpoint();
 
-      if (!isConfigured || alwaysLocal) {
+      // Gemini has no Whisper endpoint, so always use local STT for Gemini users
+      final hasWhisperEndpoint =
+          endpoint.contains('groq.com') || endpoint.contains('openai.com');
+
+      if (!isConfigured || alwaysLocal || !hasWhisperEndpoint) {
         await _startLocalTranscription();
       } else {
         await _startRecording();
@@ -150,6 +172,9 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   }
 
   Future<void> _stopRecording() async {
+    _silenceTimer?.cancel();
+    _silenceTimer = null;
+
     final speechService = ref.read(localSpeechServiceProvider);
     if (speechService.isListening) {
       speechService.stop();

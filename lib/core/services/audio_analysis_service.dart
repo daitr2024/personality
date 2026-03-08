@@ -155,9 +155,42 @@ class AudioAnalysisService {
     String text, {
     String language = 'tr',
   }) async {
+    // Try primary config first
+    final result = await _tryAnalyze(text, language: language, isBackup: false);
+    if (result.$1 != null) return result;
+
+    // If primary failed with auth error, try backup
+    final errorMsg = result.$2 ?? '';
+    if (errorMsg.contains('401') ||
+        errorMsg.contains('403') ||
+        errorMsg.contains('API_KEY')) {
+      debugPrint('Primary API failed, trying backup...');
+      final backupResult = await _tryAnalyze(
+        text,
+        language: language,
+        isBackup: true,
+      );
+      if (backupResult.$1 != null) return backupResult;
+    }
+
+    return result;
+  }
+
+  Future<(AnalysisResult?, String?)> _tryAnalyze(
+    String text, {
+    String language = 'tr',
+    bool isBackup = false,
+  }) async {
     try {
-      final apiKey = await _configService.getApiKey();
-      final model = await _configService.getModel();
+      final apiKey = isBackup
+          ? await _configService.getApiKeyBackup()
+          : await _configService.getApiKey();
+      final model = isBackup
+          ? await _configService.getModelBackup()
+          : await _configService.getModel();
+      final endpoint = isBackup
+          ? await _configService.getEndpointBackup()
+          : await _configService.getEndpoint();
 
       if (apiKey == null || apiKey.isEmpty) {
         return (null, 'API_KEY_NOT_SET');
@@ -181,31 +214,97 @@ class AudioAnalysisService {
         now,
       );
 
-      final url =
-          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
+      // Determine if endpoint is OpenAI-compatible or direct Gemini
+      final isOpenAICompatible =
+          endpoint.contains('/openai') ||
+          endpoint.contains('openai.com') ||
+          endpoint.contains('groq.com') ||
+          (!endpoint.contains('generativelanguage.googleapis.com'));
 
-      final response = await http
-          .post(
-            Uri.parse(url),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'contents': [
-                {
-                  'parts': [
-                    {'text': prompt},
-                  ],
-                },
-              ],
-              'generationConfig': {'temperature': 0.1},
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final isDirectGemini =
+          endpoint.contains('generativelanguage.googleapis.com') &&
+          !endpoint.contains('/openai');
+
+      http.Response response;
+
+      if (isDirectGemini) {
+        // Direct Gemini REST API: /v1beta/models/{model}:generateContent?key=
+        String cleanEndpoint = endpoint.trim();
+        if (cleanEndpoint.endsWith('/')) {
+          cleanEndpoint = cleanEndpoint.substring(0, cleanEndpoint.length - 1);
+        }
+        // Extract base URL up to /v1beta
+        String baseUrl = cleanEndpoint;
+        final v1betaIndex = cleanEndpoint.indexOf('/v1beta');
+        if (v1betaIndex != -1) {
+          baseUrl = cleanEndpoint.substring(0, v1betaIndex + '/v1beta'.length);
+        }
+        final url = '$baseUrl/models/$model:generateContent?key=$apiKey';
+
+        response = await http
+            .post(
+              Uri.parse(url),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'contents': [
+                  {
+                    'parts': [
+                      {'text': prompt},
+                    ],
+                  },
+                ],
+                'generationConfig': {'temperature': 0.1},
+              }),
+            )
+            .timeout(const Duration(seconds: 30));
+      } else {
+        // OpenAI-compatible endpoint (Gemini /openai, OpenAI, Groq, etc.)
+        String cleanEndpoint = endpoint.trim();
+        if (cleanEndpoint.endsWith('/')) {
+          cleanEndpoint = cleanEndpoint.substring(0, cleanEndpoint.length - 1);
+        }
+        // Ensure /chat/completions path
+        String url;
+        if (cleanEndpoint.endsWith('/chat/completions')) {
+          url = cleanEndpoint;
+        } else if (cleanEndpoint.endsWith('/v1')) {
+          url = '$cleanEndpoint/chat/completions';
+        } else {
+          url = '$cleanEndpoint/chat/completions';
+        }
+
+        response = await http
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $apiKey',
+              },
+              body: jsonEncode({
+                'model': model,
+                'messages': [
+                  {'role': 'user', 'content': prompt},
+                ],
+                'temperature': 0.1,
+              }),
+            )
+            .timeout(const Duration(seconds: 30));
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        String content =
-            data['candidates'][0]['content']['parts'][0]['text']?.toString() ??
-            '';
+        String content;
+
+        if (isDirectGemini) {
+          content =
+              data['candidates'][0]['content']['parts'][0]['text']
+                  ?.toString() ??
+              '';
+        } else {
+          // OpenAI-compatible response format
+          content =
+              data['choices']?[0]?['message']?['content']?.toString() ?? '';
+        }
 
         final start = content.indexOf('{');
         final end = content.lastIndexOf('}');
@@ -248,7 +347,9 @@ class AudioAnalysisService {
           'API kota limiti aşıldı. Lütfen 1 dakika bekleyip tekrar deneyin.',
         );
       } else {
-        debugPrint('AI API Error: ${response.statusCode} - ${response.body}');
+        debugPrint(
+          'AI API Error (${isBackup ? "backup" : "primary"}): ${response.statusCode} - ${response.body}',
+        );
         return (null, 'API Hatası (${response.statusCode})');
       }
     } catch (e) {

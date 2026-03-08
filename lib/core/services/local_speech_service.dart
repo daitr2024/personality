@@ -47,7 +47,7 @@ class LocalSpeechService {
       },
       localeId: 'tr_TR',
       listenFor: duration,
-      pauseFor: const Duration(seconds: 5),
+      pauseFor: const Duration(seconds: 2),
       listenOptions: SpeechListenOptions(
         cancelOnError: true,
         partialResults: true,
