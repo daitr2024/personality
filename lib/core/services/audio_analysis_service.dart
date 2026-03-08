@@ -348,7 +348,7 @@ class AudioAnalysisService {
         );
       } else {
         debugPrint(
-          'AI API Error (${isBackup ? "backup" : "primary"}): ${response.statusCode} - ${response.body}',
+          'AI API Error (${isBackup ? "backup" : "primary"}): ${response.statusCode} - ${utf8.decode(response.bodyBytes)}',
         );
         return (null, 'API Hatası (${response.statusCode})');
       }
