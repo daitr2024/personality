@@ -135,7 +135,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     final pendingAction = await service.checkPendingAction();
     if (!mounted) return;
 
-    if (pendingAction == 'ACTION_QUICK_NOTE') {
+    if (pendingAction is Map) {
+      // Wear OS voice input (returns Map with action + voiceText)
+      final action = pendingAction['action'];
+      if (action == 'ACTION_WEAR_VOICE_INPUT') {
+        final voiceText = pendingAction['voiceText'] as String? ?? '';
+        if (voiceText.isNotEmpty) {
+          _handleWearVoiceInput(voiceText);
+        }
+      }
+    } else if (pendingAction == 'ACTION_QUICK_NOTE') {
       _showRecordDialog(context, ref, autoStart: true);
     } else if (pendingAction == 'ACTION_QUICK_TEXT') {
       // Wait a bit for UI to build
@@ -155,7 +164,6 @@ class _HomePageState extends ConsumerState<HomePage> {
         _showRecordDialog(context, ref, autoStart: true);
       } else if (call.method == 'quickTextTriggered') {
         if (mounted) {
-          // Ensure we are on top
           Navigator.of(context).popUntil((route) => route.isFirst);
           _inputFocusNode.requestFocus();
         }
@@ -169,8 +177,25 @@ class _HomePageState extends ConsumerState<HomePage> {
           Navigator.of(context).popUntil((route) => route.isFirst);
           context.push('/image-scan', extra: {'useGallery': true});
         }
+      } else if (call.method == 'wearVoiceInput') {
+        // Warm start: voice text received from watch
+        final voiceText = call.arguments as String? ?? '';
+        if (voiceText.isNotEmpty && mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          _handleWearVoiceInput(voiceText);
+        }
       }
     });
+  }
+
+  /// Handle voice input from Wear OS watch.
+  /// Sends the text directly to AI analysis dialog for smart classification.
+  void _handleWearVoiceInput(String text) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AudioAnalysisDialog(text: text),
+    );
   }
 
   void _showRecordDialog(

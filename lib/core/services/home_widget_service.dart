@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
 import '../utils/date_utils.dart';
 import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 
-/// Service to update the Android Home Widget with daily task data.
-/// This data is also visible on Samsung Galaxy Watch via widget mirroring.
+/// Service to update the Android Home Widget and Wear OS watch with daily task data.
 class HomeWidgetService {
   final AppDatabase _database;
+
+  // Wear OS sync channel
+  static const _wearChannel = MethodChannel('com.daitr2024.personalityai/wear_sync');
 
   HomeWidgetService(this._database);
 
@@ -87,11 +91,12 @@ class HomeWidgetService {
         return dateA.compareTo(dateB);
       });
 
-      // Filter and limit to 8 closest items (closest to 'now' but starting from oldest relevant)
-      // Actually the user said "closest to today's tasks", so we take the first 8 from our sorted list
+      // Filter and limit to 8 closest items
       final displayList = unifiedItems.take(8).toList();
 
       final displayItems = <String>[];
+      final wearItems = <Map<String, dynamic>>[]; // For Wear OS JSON
+
       for (final item in displayList) {
         if (item is TaskEntity) {
           final isOverdue =
@@ -103,11 +108,29 @@ class HomeWidgetService {
           final urgentMark = item.isUrgent ? '❗' : '';
           final overdueMark = isOverdue ? '⚠️ ' : '';
           displayItems.add('$timeStr $overdueMark$urgentMark${item.title}');
+
+          // Wear OS item
+          wearItems.add({
+            'title': item.title,
+            'time': timeStr,
+            'type': 'task',
+            'urgent': item.isUrgent,
+            'completed': item.isCompleted,
+          });
         } else if (item is CalendarEventEntity) {
           final time = (item.startTime ?? item.date).toAppLocal;
           final timeStr =
               '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
           displayItems.add('$timeStr 📅 ${item.title}');
+
+          // Wear OS item
+          wearItems.add({
+            'title': item.title,
+            'time': timeStr,
+            'type': 'event',
+            'urgent': false,
+            'completed': false,
+          });
         }
       }
 
@@ -132,8 +155,23 @@ class HomeWidgetService {
         androidName: 'HomeWidgetProvider',
         qualifiedAndroidName: 'com.daitr2024.personalityai.HomeWidgetProvider',
       );
+
+      // ─── Sync to Wear OS watch ─────────────────────────────────
+      _syncToWear(wearItems);
     } catch (e) {
       debugPrint('HomeWidgetService: Error updating widget: $e');
+    }
+  }
+
+  /// Send task data to the Wear OS watch via MethodChannel → DataClient
+  Future<void> _syncToWear(List<Map<String, dynamic>> items) async {
+    try {
+      final taskJson = jsonEncode(items);
+      await _wearChannel.invokeMethod('syncTasks', {'taskJson': taskJson});
+      debugPrint('HomeWidgetService: Sent ${items.length} items to Wear OS');
+    } catch (e) {
+      // Watch may not be connected — silently fail
+      debugPrint('HomeWidgetService: Wear sync skipped (${e.toString().split('\n').first})');
     }
   }
 }

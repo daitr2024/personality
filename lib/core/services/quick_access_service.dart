@@ -8,10 +8,13 @@ class QuickAccessService {
     'com.daitr2024.personalityai/quick_actions',
   );
 
-  Future<String?> checkPendingAction() async {
+  /// Check for pending action from widget/tile/wear.
+  /// Returns either a String action name, or a Map with 'action' and 'voiceText'
+  /// for wear voice input.
+  Future<dynamic> checkPendingAction() async {
     try {
-      final String? action = await platform.invokeMethod('checkPendingAction');
-      return action;
+      final result = await platform.invokeMethod('checkPendingAction');
+      return result;
     } on PlatformException catch (_) {
       return null;
     }
