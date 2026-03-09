@@ -153,14 +153,18 @@ class AudioAnalysisService {
   AudioAnalysisService(this._configService);
 
   /// Transcribe an audio file using Gemini API (replaces local STT)
-  /// Returns the transcribed text, or null on failure.
-  Future<String?> transcribeAudioFile(String audioPath) async {
+  /// Returns (transcribedText, errorMessage)
+  Future<(String?, String?)> transcribeAudioFile(String audioPath) async {
     final apiKey = (await _configService.getApiKey())?.trim();
-    if (apiKey == null || apiKey.isEmpty) return null;
+    if (apiKey == null || apiKey.isEmpty) {
+      return (null, 'API_KEY_NOT_SET');
+    }
 
     final model = await _configService.getModel();
     final file = File(audioPath);
-    if (!await file.exists()) return null;
+    if (!await file.exists()) {
+      return (null, 'Ses dosyası bulunamadı');
+    }
 
     final audioBytes = await file.readAsBytes();
     final base64Audio = base64Encode(audioBytes);
@@ -236,17 +240,27 @@ class AudioAnalysisService {
             outerJson['candidates']?[0]?['content']?['parts']?[0]?['text']
                 ?.toString()
                 .trim();
-        return (text != null && text.isNotEmpty) ? text : null;
+        if (text != null && text.isNotEmpty) {
+          return (text, null);
+        }
+        return (null, 'Ses anlaşılamadı. Lütfen tekrar deneyin.');
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        return (
+          null,
+          'API anahtarı geçersiz veya yetkisiz (${response.statusCode})',
+        );
+      } else if (response.statusCode == 429) {
+        return (null, 'API kota limiti aşıldı. Lütfen biraz bekleyin.');
       } else {
         final errorBody = utf8.decode(response.bodyBytes);
         debugPrint(
           'Gemini audio transcription error (${response.statusCode}): $errorBody',
         );
-        return null;
+        return (null, 'Ses analizi hatası (${response.statusCode})');
       }
     } catch (e) {
       debugPrint('Audio transcription error: $e');
-      return null;
+      return (null, 'Bağlantı hatası: $e');
     }
   }
 

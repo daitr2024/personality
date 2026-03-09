@@ -189,9 +189,9 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
     });
 
     try {
-      // Use Gemini API to transcribe audio
       final analysisService = ref.read(audioAnalysisServiceProvider);
-      final transcribedText = await analysisService.transcribeAudioFile(path);
+      final (transcribedText, error) = await analysisService
+          .transcribeAudioFile(path);
 
       if (transcribedText != null && transcribedText.isNotEmpty && mounted) {
         // Delete the audio file to save space
@@ -202,6 +202,11 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
 
         widget.onRecordingComplete('', transcribedText);
       } else {
+        if (error != null && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error), backgroundColor: Colors.red),
+          );
+        }
         widget.onRecordingComplete(path, null);
       }
     } catch (e) {

@@ -157,23 +157,23 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   Future<void> _transcribe(String path) async {
     setState(() => _isTranscribing = true);
     try {
-      // Use Gemini to transcribe audio to text
       final analysisService = ref.read(audioAnalysisServiceProvider);
-      final transcribedText = await analysisService.transcribeAudioFile(path);
+      final (transcribedText, error) = await analysisService
+          .transcribeAudioFile(path);
 
       if (transcribedText != null && transcribedText.isNotEmpty && mounted) {
-        // Open AudioAnalysisDialog with the transcribed text for AI analysis
         showDialog(
           context: context,
           builder: (context) =>
               AudioAnalysisDialog(text: transcribedText, audioPath: path),
         );
       } else if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        final msg = error == 'API_KEY_NOT_SET'
+            ? l10n.apiKeyNotSet
+            : (error ?? 'Ses analizi başarısız');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.apiKeyNotSet),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
