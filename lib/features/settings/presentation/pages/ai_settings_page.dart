@@ -1,8 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/ai_config_provider.dart';
 
@@ -120,6 +124,116 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
           backgroundColor: Colors.green,
         ),
       );
+    }
+  }
+
+  // ─── OCR Scan API Key from Camera/Gallery ────────────────────
+  Future<void> _scanApiKeyFromImage(bool useCamera) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: useCamera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 2000,
+        maxHeight: 2000,
+        imageQuality: 90,
+      );
+      if (pickedFile == null) return;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Görsel taranıyor...'),
+              ],
+            ),
+            duration: Duration(seconds: 10),
+          ),
+        );
+      }
+
+      final inputImage = InputImage.fromFilePath(pickedFile.path);
+      final textRecognizer = TextRecognizer(
+        script: TextRecognitionScript.latin,
+      );
+
+      try {
+        final recognizedText = await textRecognizer.processImage(inputImage);
+        String? foundKey;
+        for (final block in recognizedText.blocks) {
+          for (final line in block.lines) {
+            final lineText = line.text.trim();
+            if (lineText.startsWith('AIza') &&
+                lineText.length >= 30 &&
+                lineText.length <= 50) {
+              foundKey = lineText.replaceAll(RegExp(r'\s'), '');
+              break;
+            }
+            final keyMatch = RegExp(
+              r'AIza[A-Za-z0-9_-]{25,45}',
+            ).firstMatch(lineText);
+            if (keyMatch != null) {
+              foundKey = keyMatch.group(0);
+              break;
+            }
+          }
+          if (foundKey != null) break;
+        }
+
+        if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+        if (foundKey != null && mounted) {
+          _apiKeyController.text = foundKey;
+          setState(() {});
+          HapticFeedback.lightImpact();
+          _saveSettings();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'API anahtarı bulundu! ✓ (${foundKey.substring(0, 8)}...)',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Görselde API anahtarı bulunamadı. "AIza..." ile başlayan anahtarın net göründüğünden emin olun.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } finally {
+        textRecognizer.close();
+        try {
+          final file = File(pickedFile.path);
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('OCR error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Görsel tarama hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -250,25 +364,96 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                 const Gap(12),
                 TextField(
                   controller: _apiKeyController,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: 'AIzaSy...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     prefixIcon: const Icon(Icons.key),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureApiKey
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscureApiKey = !_obscureApiKey),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _obscureApiKey
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscureApiKey = !_obscureApiKey),
+                          tooltip: _obscureApiKey ? 'Göster' : 'Gizle',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.camera_alt_rounded, size: 20),
+                          onPressed: () => _scanApiKeyFromImage(true),
+                          tooltip: 'Kameradan OCR',
+                          color: Colors.teal,
+                        ),
+                      ],
                     ),
                     helperText: l10n.apiKeySecureHint,
                   ),
                   obscureText: _obscureApiKey,
                 ),
+                // OCR quick buttons (when field is empty)
+                if (_apiKeyController.text.trim().isEmpty) ...[
+                  const Gap(8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _scanApiKeyFromImage(true),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: BorderSide(
+                              color: Colors.teal.withValues(alpha: 0.3),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 16,
+                            color: Colors.teal,
+                          ),
+                          label: const Text(
+                            'Kamera ile Oku',
+                            style: TextStyle(fontSize: 12, color: Colors.teal),
+                          ),
+                        ),
+                      ),
+                      const Gap(8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _scanApiKeyFromImage(false),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            side: BorderSide(
+                              color: Colors.orange.withValues(alpha: 0.3),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.photo_library_rounded,
+                            size: 16,
+                            color: Colors.orange,
+                          ),
+                          label: const Text(
+                            'Galeriden Oku',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const Gap(20),
 
                 // ─── Main: Model ──────────────────────────────
