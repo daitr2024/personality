@@ -17,6 +17,8 @@ import '../../../notes/presentation/widgets/audio_analysis_dialog.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../notifications/providers/notification_providers.dart';
 import '../../../../core/services/home_widget_service.dart';
+import '../../../../core/services/config_backup_service.dart';
+import '../../../../core/services/ai_config_service.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -35,10 +37,89 @@ class _HomePageState extends ConsumerState<HomePage> {
     // Schedule smart notifications on app launch
     Future.microtask(() {
       ref.read(smartNotificationSchedulerProvider);
-      // Update home widget with today's tasks
       final db = ref.read(databaseProvider);
       HomeWidgetService(db).updateWidget();
+      _checkConfigBackup();
     });
+  }
+
+  Future<void> _checkConfigBackup() async {
+    // Only check if no API key is set (fresh install)
+    final configService = AIConfigService();
+    final hasKey = await configService.isConfigured();
+    if (hasKey) return;
+
+    final backupInfo = await ConfigBackupService.checkForBackup();
+    if (backupInfo == null || !mounted) return;
+
+    final maskedKey = backupInfo['maskedKey'] as String?;
+    final keyCount = backupInfo['keyCount'] as int? ?? 0;
+    final backupDate = backupInfo['backupDate'] as String?;
+
+    String dateStr = '';
+    if (backupDate != null) {
+      try {
+        final dt = DateTime.parse(backupDate);
+        dateStr =
+            '${dt.day}.${dt.month}.${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    final shouldRestore = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.restore, size: 48, color: Colors.blueAccent),
+        title: const Text('Yapılandırma Bulundu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Daha önceki kurulumunuza ait yapılandırma ayarları bulundu.',
+            ),
+            const Gap(12),
+            if (maskedKey != null)
+              Text(
+                '🔑 API Key: $maskedKey',
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+              ),
+            Text('📋 $keyCount ayar tespit edildi'),
+            if (dateStr.isNotEmpty) Text('📅 Yedek tarihi: $dateStr'),
+            const Gap(12),
+            const Text(
+              'Bu ayarları geri yüklemek ister misiniz?',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hayır'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.restore),
+            label: const Text('Geri Yükle'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldRestore == true && mounted) {
+      final restored = await ConfigBackupService.restoreConfig();
+      if (restored > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ $restored yapılandırma ayarı geri yüklendi!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   @override

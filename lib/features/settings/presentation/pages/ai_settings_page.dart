@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/api_key_scanner.dart';
+import '../../../../core/services/config_backup_service.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../providers/ai_config_provider.dart';
 
@@ -494,6 +495,55 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                 _buildAdvancedSection(l10n, cs),
 
                 const Gap(24),
+
+                // ─── Backup Config Button ──────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final success = await ConfigBackupService.exportConfig();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? '✅ Yapılandırma ayarları cihazınıza yedeklendi!'
+                                : '❌ Yedekleme başarısız. Depolama izni verilmemiş olabilir.',
+                          ),
+                          backgroundColor: success ? Colors.green : Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.all(14),
+                      backgroundColor: Colors.blueAccent.shade700,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text(
+                      'Yapılandırmayı Yedekle',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Text(
+                    'Uygulama silinse bile yapılandırma ayarlarınız cihazınızda güvenle saklanır.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: cs.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+
+                const Gap(16),
 
                 // ─── Reset Button ─────────────────────────────
                 SizedBox(
