@@ -50,6 +50,79 @@ void main() {
         );
       });
     });
+
+    group('extractKey', () {
+      test('extracts key from clean text', () {
+        final key = ApiKeyScanner.extractKey(
+          'Your key: AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P',
+        );
+        expect(key, equals('AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P'));
+      });
+
+      test('extracts key with spaces (OCR artifact)', () {
+        final key = ApiKeyScanner.extractKey(
+          'AIza SyA1B2C3 D4E5F6G7 H8I9J0K1L2M3N4O5P',
+        );
+        expect(key, isNotNull);
+        expect(key!.startsWith('AIza'), isTrue);
+        expect(key.length, greaterThanOrEqualTo(30));
+      });
+
+      test('extracts key with OCR l→I misread', () {
+        // OCR might read 'I' as 'l' (lowercase L)
+        final key = ApiKeyScanner.extractKey(
+          'AlzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P',
+        );
+        expect(key, isNotNull);
+        expect(key!.startsWith('AIza'), isTrue);
+      });
+
+      test('extracts key with OCR 1→I misread', () {
+        // OCR might read 'I' as '1'
+        final key = ApiKeyScanner.extractKey(
+          'A1zaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P',
+        );
+        expect(key, isNotNull);
+        expect(key!.startsWith('AIza'), isTrue);
+      });
+
+      test('extracts key split across two lines', () {
+        // Key split in middle — combined should work
+        final combined =
+            'AIzaSyA1B2C3D4E5F6G7'
+            'H8I9J0K1L2M3N4O5P';
+        final key = ApiKeyScanner.extractKey(combined);
+        expect(key, isNotNull);
+        expect(key!.length, greaterThanOrEqualTo(30));
+      });
+
+      test('returns null for text without key', () {
+        final key = ApiKeyScanner.extractKey('Hello world, no key here');
+        expect(key, isNull);
+      });
+
+      test('extracts key from noisy OCR text', () {
+        final key = ApiKeyScanner.extractKey(
+          'Google AI Studio\nAPI Key: AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P\nCopy this key',
+        );
+        expect(key, isNotNull);
+        expect(key!.startsWith('AIza'), isTrue);
+      });
+    });
+
+    group('fixOcrErrors', () {
+      test('corrects Alza to AIza', () {
+        expect(ApiKeyScanner.fixOcrErrors('AlzaSyTest'), contains('AIza'));
+      });
+
+      test('corrects A1za to AIza', () {
+        expect(ApiKeyScanner.fixOcrErrors('A1zaSyTest'), contains('AIza'));
+      });
+
+      test('leaves correct AIza unchanged', () {
+        expect(ApiKeyScanner.fixOcrErrors('AIzaSyTest'), equals('AIzaSyTest'));
+      });
+    });
   });
 
   group('RecordingDefaults', () {

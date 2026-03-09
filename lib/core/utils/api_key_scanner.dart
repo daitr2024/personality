@@ -11,7 +11,17 @@ class ApiKeyScanner {
   ApiKeyScanner._();
 
   /// Regex pattern for Google API keys
-  static final _keyPattern = RegExp(r'AIza[A-Za-z0-9_-]{25,45}');
+  static final _keyPattern = RegExp(r'AIza[A-Za-z0-9_\-]{25,45}');
+
+  /// Common OCR misreads and their corrections
+  static final _ocrCorrections = {
+    'AlzA': 'AIzA', // lowercase L → uppercase I
+    'Alza': 'AIza',
+    'A1za': 'AIza', // digit 1 → uppercase I
+    'A|za': 'AIza', // pipe → I
+    'AIZa': 'AIza', // uppercase Z → lowercase z
+    'Aiza': 'AIza', // lowercase i → uppercase I
+  };
 
   /// Validates that a string looks like a Google API key.
   static bool isValidFormat(String key) {
@@ -19,6 +29,79 @@ class ApiKeyScanner {
     return trimmed.startsWith('AIza') &&
         trimmed.length >= 30 &&
         trimmed.length <= 50;
+  }
+
+  /// Fix common OCR character misreadings in a text string.
+  @visibleForTesting
+  static String fixOcrErrors(String text) {
+    var fixed = text;
+    // Fix common prefix misreads
+    for (final entry in _ocrCorrections.entries) {
+      if (fixed.contains(entry.key)) {
+        fixed = fixed.replaceAll(entry.key, entry.value);
+      }
+    }
+    // Remove zero-width and invisible unicode characters
+    fixed = fixed.replaceAll(RegExp(r'[\u200B-\u200D\uFEFF\u00AD]'), '');
+    return fixed;
+  }
+
+  /// Extract API key from recognized text using multiple strategies.
+  @visibleForTesting
+  static String? extractKey(String fullText) {
+    // Strategy 1: Direct regex match on full text
+    final match = _keyPattern.firstMatch(fullText);
+    if (match != null) {
+      final key = match.group(0)!;
+      if (key.length >= 30) return key;
+    }
+
+    // Strategy 2: Try with OCR error corrections
+    final corrected = fixOcrErrors(fullText);
+    final correctedMatch = _keyPattern.firstMatch(corrected);
+    if (correctedMatch != null) {
+      final key = correctedMatch.group(0)!;
+      if (key.length >= 30) return key;
+    }
+
+    // Strategy 3: Remove all whitespace/newlines and search again
+    final noSpaces = fullText.replaceAll(RegExp(r'\s+'), '');
+    final noSpaceMatch = _keyPattern.firstMatch(noSpaces);
+    if (noSpaceMatch != null) {
+      final key = noSpaceMatch.group(0)!;
+      if (key.length >= 30) return key;
+    }
+
+    // Strategy 4: Corrected + no spaces combined
+    final correctedNoSpaces = fixOcrErrors(noSpaces);
+    final combinedMatch = _keyPattern.firstMatch(correctedNoSpaces);
+    if (combinedMatch != null) {
+      final key = combinedMatch.group(0)!;
+      if (key.length >= 30) return key;
+    }
+
+    // Strategy 5: Find "AIza" or similar prefix and grab 39 chars after it
+    final prefixPatterns = ['AIza', 'Alza', 'A1za', 'Aiza'];
+    for (final prefix in prefixPatterns) {
+      final idx = correctedNoSpaces.indexOf(prefix);
+      if (idx == -1) continue;
+      // Google API keys are exactly 39 characters
+      final endIdx = idx + 39;
+      if (endIdx <= correctedNoSpaces.length) {
+        var candidate = correctedNoSpaces.substring(idx, endIdx);
+        // Ensure it starts with AIza after correction
+        if (!candidate.startsWith('AIza')) {
+          candidate = 'AIza${candidate.substring(4)}';
+        }
+        // Clean: only allow alphanumeric, dash, underscore
+        candidate = candidate.replaceAll(RegExp(r'[^A-Za-z0-9_\-]'), '');
+        if (candidate.length >= 30 && candidate.startsWith('AIza')) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
   }
 
   /// Scans an image for a Google API key using ML Kit OCR.
@@ -30,9 +113,9 @@ class ApiKeyScanner {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: useCamera ? ImageSource.camera : ImageSource.gallery,
-      maxWidth: 2000,
-      maxHeight: 2000,
-      imageQuality: 90,
+      maxWidth: 3000, // Higher resolution for better OCR
+      maxHeight: 3000,
+      imageQuality: 95, // Higher quality
     );
     if (pickedFile == null) return null;
 
@@ -42,23 +125,57 @@ class ApiKeyScanner {
     try {
       final recognizedText = await textRecognizer.processImage(inputImage);
 
+      // Collect all text from all blocks and lines
+      final allLines = <String>[];
+      final allText = StringBuffer();
+
       for (final block in recognizedText.blocks) {
         for (final line in block.lines) {
           final lineText = line.text.trim();
-
-          // Direct match: entire line is a key
-          if (isValidFormat(lineText)) {
-            return lineText.replaceAll(RegExp(r'\s'), '');
-          }
-
-          // Regex match: key embedded in longer text
-          final keyMatch = _keyPattern.firstMatch(lineText);
-          if (keyMatch != null) {
-            return keyMatch.group(0);
+          if (lineText.isNotEmpty) {
+            allLines.add(lineText);
+            allText.write(lineText);
           }
         }
       }
-      return null; // No key found
+
+      debugPrint(
+        'OCR recognized ${allLines.length} lines, total ${allText.length} chars',
+      );
+      debugPrint('OCR full text: $allText');
+
+      // Attempt 1: Search each individual line
+      for (final line in allLines) {
+        final key = extractKey(line);
+        if (key != null) {
+          debugPrint('OCR found key in single line: ${key.substring(0, 8)}...');
+          return key;
+        }
+      }
+
+      // Attempt 2: Search adjacent line pairs (key might be split across 2 lines)
+      for (int i = 0; i < allLines.length - 1; i++) {
+        final combined = '${allLines[i]}${allLines[i + 1]}';
+        final key = extractKey(combined);
+        if (key != null) {
+          debugPrint(
+            'OCR found key in combined lines [$i, ${i + 1}]: ${key.substring(0, 8)}...',
+          );
+          return key;
+        }
+      }
+
+      // Attempt 3: Search the entire text as one blob
+      final key = extractKey(allText.toString());
+      if (key != null) {
+        debugPrint(
+          'OCR found key in full text blob: ${key.substring(0, 8)}...',
+        );
+        return key;
+      }
+
+      debugPrint('OCR: No API key found in recognized text');
+      return null;
     } finally {
       textRecognizer.close();
       // Clean up temp file
