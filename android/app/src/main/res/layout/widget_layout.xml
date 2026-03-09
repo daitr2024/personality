@@ -56,18 +56,18 @@
         android:ellipsize="end"
         android:maxLines="15" />
 
-    <!-- Bottom Row: Quick Actions -->
+    <!-- Bottom Row: Quick Actions (enlarged) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="4dp">
+        android:layout_marginTop="6dp">
 
         <FrameLayout
             android:id="@+id/widget_mic_btn"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:background="@drawable/circle_background"
             android:clickable="true"
             android:focusable="true">
@@ -75,27 +75,27 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🎤"
-                android:textSize="14sp"
+                android:textSize="28sp"
                 android:layout_gravity="center"/>
         </FrameLayout>
 
         <FrameLayout
             android:id="@+id/widget_text_btn"
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="56dp"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="8dp"
             android:background="@drawable/widget_card_bg"
             android:clickable="true"
             android:focusable="true">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Hızlı not..."
-                android:textColor="#8B8BA7"
-                android:textSize="11sp"
+                android:text="✏️ Hızlı not ekle..."
+                android:textColor="#B0B0D0"
+                android:textSize="15sp"
                 android:layout_gravity="center_vertical"
-                android:paddingStart="10dp" />
+                android:paddingStart="14dp" />
         </FrameLayout>
     </LinearLayout>
 
