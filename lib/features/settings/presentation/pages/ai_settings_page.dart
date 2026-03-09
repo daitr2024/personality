@@ -423,35 +423,6 @@ class _AISettingsPageState extends ConsumerState<AISettingsPage> {
                     ),
                   ),
                 ),
-                const Gap(16),
-
-                // ─── Security Info ────────────────────────────
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.security_rounded, color: cs.primary, size: 20),
-                      const Gap(12),
-                      Expanded(
-                        child: Text(
-                          l10n.apiKeySecureInfo,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: cs.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Gap(16),
 
                 // ─── Auto Stop on Silence Toggle ──────────────
                 Container(
