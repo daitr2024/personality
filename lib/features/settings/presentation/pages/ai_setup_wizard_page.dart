@@ -1,9 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/ai_config_provider.dart';
 
@@ -204,6 +207,131 @@ class _AISetupWizardPageState extends ConsumerState<AISetupWizardPage>
         ],
       ),
     );
+  }
+  // ─── Scan API Key from Image (OCR) ─────────────────────────────
+
+  Future<void> _scanApiKeyFromImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 2000,
+        maxHeight: 2000,
+        imageQuality: 90,
+      );
+
+      if (pickedFile == null) return;
+
+      // Show loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Görsel taranıyor...'),
+              ],
+            ),
+            duration: Duration(seconds: 10),
+          ),
+        );
+      }
+
+      final inputImage = InputImage.fromFilePath(pickedFile.path);
+      final textRecognizer = TextRecognizer(
+        script: TextRecognitionScript.latin,
+      );
+
+      try {
+        final RecognizedText recognizedText = await textRecognizer.processImage(
+          inputImage,
+        );
+
+        // Search for API key pattern in all text blocks
+        String? foundKey;
+        for (final block in recognizedText.blocks) {
+          for (final line in block.lines) {
+            final lineText = line.text.trim();
+            // Look for Google API key pattern
+            if (lineText.startsWith('AIza') &&
+                lineText.length >= 30 &&
+                lineText.length <= 50) {
+              // Clean the key — remove any spaces or special chars
+              foundKey = lineText.replaceAll(RegExp(r'\s'), '');
+              break;
+            }
+            // Also check within text (key might be part of a longer string)
+            final keyMatch = RegExp(
+              r'AIza[A-Za-z0-9_-]{25,45}',
+            ).firstMatch(lineText);
+            if (keyMatch != null) {
+              foundKey = keyMatch.group(0);
+              break;
+            }
+          }
+          if (foundKey != null) break;
+        }
+
+        // Dismiss loading snackbar
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+
+        if (foundKey != null && mounted) {
+          _apiKeyController.text = foundKey;
+          setState(() {});
+          HapticFeedback.lightImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'API anahtarı bulundu ve yapıştırıldı! ✓ (${foundKey.substring(0, 8)}...)',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Görselde API anahtarı bulunamadı. '
+                'Lütfen "AIza..." ile başlayan anahtarın net göründüğünden emin olun.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } finally {
+        textRecognizer.close();
+        // Delete temp file
+        try {
+          final tempFile = File(pickedFile.path);
+          if (await tempFile.exists()) {
+            await tempFile.delete();
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('OCR error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Görsel tarama hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // ─── Open AI Studio in-app ─────────────────────────────────────
@@ -874,53 +1002,107 @@ class _AISetupWizardPageState extends ConsumerState<AISetupWizardPage>
         children: [
           // Quick paste from clipboard button
           if (_apiKeyController.text.trim().isEmpty) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final data = await Clipboard.getData('text/plain');
-                  final text = data?.text?.trim() ?? '';
-                  if (text.startsWith('AIza') && text.length >= 30) {
-                    _apiKeyController.text = text;
-                    setState(() {});
-                    HapticFeedback.lightImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Panodan yapıştırıldı! ✓'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 1),
+            Row(
+              children: [
+                // Paste from clipboard
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      final text = data?.text?.trim() ?? '';
+                      if (text.startsWith('AIza') && text.length >= 30) {
+                        _apiKeyController.text = text;
+                        setState(() {});
+                        HapticFeedback.lightImpact();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Panodan yapıştırıldı! ✓'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      } else if (text.isNotEmpty) {
+                        _apiKeyController.text = text;
+                        setState(() {});
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Panoda API anahtarı bulunamadı. Lütfen önce kopyalayın.',
+                            ),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.all(14),
+                      side: BorderSide(
+                        color: cs.primary.withValues(alpha: 0.3),
                       ),
-                    );
-                  } else if (text.isNotEmpty) {
-                    _apiKeyController.text = text;
-                    setState(() {});
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Panoda API anahtarı bulunamadı. Lütfen önce kopyalayın.',
-                        ),
-                        backgroundColor: Colors.orange,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                    );
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.all(14),
-                  side: BorderSide(color: cs.primary.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    ),
+                    icon: Icon(Icons.content_paste_rounded, color: cs.primary),
+                    label: Text(
+                      'Yapıştır',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
                   ),
                 ),
-                icon: Icon(Icons.content_paste_rounded, color: cs.primary),
-                label: Text(
-                  'Panodan Yapıştır',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
+                const Gap(8),
+                // Camera OCR
+                OutlinedButton.icon(
+                  onPressed: () => _scanApiKeyFromImage(ImageSource.camera),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.all(14),
+                    side: BorderSide(color: Colors.teal.withValues(alpha: 0.3)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: Colors.teal,
+                  ),
+                  label: const Text(
+                    'Kamera',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal,
+                    ),
                   ),
                 ),
-              ),
+                const Gap(8),
+                // Gallery OCR
+                OutlinedButton.icon(
+                  onPressed: () => _scanApiKeyFromImage(ImageSource.gallery),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.all(14),
+                    side: BorderSide(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.photo_library_rounded,
+                    color: Colors.orange,
+                  ),
+                  label: const Text(
+                    'Galeri',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const Gap(16),
           ],
