@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/recording_defaults.dart';
 import '../../../../features/notes/presentation/widgets/audio_analysis_dialog.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../features/settings/presentation/providers/ai_config_provider.dart';
@@ -30,7 +31,6 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   Timer? _amplitudeTimer;
   Timer? _silenceTimer;
   Timer? _graceTimer;
-  static const double _silenceThresholdDb = -50.0;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -85,20 +85,7 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
         final path = '${directory.path}/SmartInput_$timestamp.wav';
 
-        await _audioRecorder.start(
-          const RecordConfig(
-            encoder: AudioEncoder.wav,
-            numChannels: 1,
-            autoGain: true,
-            echoCancel: true,
-            noiseSuppress: true,
-            androidConfig: AndroidRecordConfig(
-              audioSource: AndroidAudioSource.voiceCommunication,
-              muteAudio: true,
-            ),
-          ),
-          path: path,
-        );
+        await _audioRecorder.start(RecordingDefaults.voiceConfig, path: path);
         setState(() => _isRecording = true);
         _pulseController.repeat(reverse: true);
 
@@ -108,7 +95,7 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         if (autoStop) {
           // Wait 3 seconds before starting silence detection
           // (gives the user time to start speaking)
-          _graceTimer = Timer(const Duration(seconds: 3), () {
+          _graceTimer = Timer(RecordingDefaults.gracePeriod, () {
             if (_isRecording && mounted) {
               _startSilenceDetection();
             }
@@ -123,15 +110,15 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
   void _startSilenceDetection() {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
-    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 200), (
+    _amplitudeTimer = Timer.periodic(RecordingDefaults.amplitudeCheckInterval, (
       timer,
     ) async {
       if (!_isRecording) return;
       final amp = await _audioRecorder.getAmplitude();
       if (!mounted) return;
 
-      if (amp.current < _silenceThresholdDb) {
-        _silenceTimer ??= Timer(const Duration(seconds: 3), () {
+      if (amp.current < RecordingDefaults.silenceThresholdDb) {
+        _silenceTimer ??= Timer(RecordingDefaults.silenceDuration, () {
           if (_isRecording && mounted) {
             debugPrint('3s silence detected — auto-stopping recording');
             _stopRecording();

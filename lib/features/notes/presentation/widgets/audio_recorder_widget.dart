@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import 'package:intl/intl.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/recording_defaults.dart';
 import '../../../settings/presentation/providers/ai_config_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 
@@ -38,7 +39,6 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   Timer? _silenceTimer;
   Timer? _graceTimer;
   double _currentAmplitude = -160.0;
-  static const double _silenceThresholdDb = -50.0;
 
   @override
   void initState() {
@@ -61,7 +61,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
   void _startAmplitudeTimer({bool enableAutoStop = true}) {
     _amplitudeTimer?.cancel();
     _silenceTimer?.cancel();
-    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 200), (
+    _amplitudeTimer = Timer.periodic(RecordingDefaults.amplitudeCheckInterval, (
       timer,
     ) async {
       if (!_isRecording) return;
@@ -73,8 +73,8 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
 
         // Only auto-stop if the setting is enabled
         if (enableAutoStop) {
-          if (amp.current < _silenceThresholdDb) {
-            _silenceTimer ??= Timer(const Duration(seconds: 3), () {
+          if (amp.current < RecordingDefaults.silenceThresholdDb) {
+            _silenceTimer ??= Timer(RecordingDefaults.silenceDuration, () {
               if (_isRecording && mounted) {
                 debugPrint('3s silence detected — auto-stopping recording');
                 _stopRecording();
@@ -110,17 +110,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
         final path = '${directory.path}/Note_$timestamp.wav';
 
-        const config = RecordConfig(
-          encoder: AudioEncoder.wav,
-          numChannels: 1,
-          autoGain: true,
-          echoCancel: true,
-          noiseSuppress: true,
-          androidConfig: AndroidRecordConfig(
-            audioSource: AndroidAudioSource.voiceCommunication,
-            muteAudio: true,
-          ),
-        );
+        const config = RecordingDefaults.voiceConfig;
         await _audioRecorder.start(config, path: path);
 
         // Check if auto-stop on silence is enabled
@@ -132,7 +122,7 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
 
         // Grace period: wait 3 seconds before enabling silence detection
         if (autoStop) {
-          _graceTimer = Timer(const Duration(seconds: 3), () {
+          _graceTimer = Timer(RecordingDefaults.gracePeriod, () {
             if (_isRecording && mounted) {
               // Cancel the visual-only timer and restart with auto-stop
               _amplitudeTimer?.cancel();
