@@ -110,7 +110,17 @@ class _AudioRecorderWidgetState extends ConsumerState<AudioRecorderWidget> {
         final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
         final path = '${directory.path}/Note_$timestamp.wav';
 
-        const config = RecordConfig(encoder: AudioEncoder.wav);
+        const config = RecordConfig(
+          encoder: AudioEncoder.wav,
+          numChannels: 1,
+          autoGain: true,
+          echoCancel: true,
+          noiseSuppress: true,
+          androidConfig: AndroidRecordConfig(
+            audioSource: AndroidAudioSource.voiceCommunication,
+            muteAudio: true,
+          ),
+        );
         await _audioRecorder.start(config, path: path);
 
         // Check if auto-stop on silence is enabled

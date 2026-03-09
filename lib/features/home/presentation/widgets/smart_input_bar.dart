@@ -86,7 +86,17 @@ class _SmartInputBarState extends ConsumerState<SmartInputBar>
         final path = '${directory.path}/SmartInput_$timestamp.wav';
 
         await _audioRecorder.start(
-          const RecordConfig(encoder: AudioEncoder.wav),
+          const RecordConfig(
+            encoder: AudioEncoder.wav,
+            numChannels: 1,
+            autoGain: true,
+            echoCancel: true,
+            noiseSuppress: true,
+            androidConfig: AndroidRecordConfig(
+              audioSource: AndroidAudioSource.voiceCommunication,
+              muteAudio: true,
+            ),
+          ),
           path: path,
         );
         setState(() => _isRecording = true);

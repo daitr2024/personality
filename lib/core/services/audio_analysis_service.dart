@@ -196,9 +196,13 @@ class AudioAnalysisService {
           'parts': [
             {
               'text':
-                  'Transcribe this audio. Return ONLY the exact spoken text, nothing else. '
-                  'If the language is Turkish, transcribe in Turkish. '
-                  'Do not add any introduction, formatting, or explanation.',
+                  'Transcribe this audio recording. Focus ONLY on the primary speaker — '
+                  'the closest and loudest voice. Completely IGNORE any background sounds '
+                  'such as TV, YouTube, music, radio, distant conversations, or any other '
+                  'ambient noise. Return ONLY the exact spoken words of the primary speaker, '
+                  'nothing else. If the language is Turkish, transcribe in Turkish. '
+                  'Do not add any introduction, formatting, labels, or explanation. '
+                  'If the primary speaker is not audible, return an empty string.',
             },
             {
               'inline_data': {'mime_type': mimeType, 'data': base64Audio},
